@@ -1,0 +1,123 @@
+/*
+ * $Copyright (c) 2013 - 2024 Cumulocity GmbH, Duesseldorf, Germany and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Cumulocity GmbH
+ */
+
+package apamax.analyticsbuilder.samples;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+
+
+/**
+* Event definition of the parameters for the HTTP Output block.
+*/
+event Logging_$Parameters {
+
+	/**
+	* Log level.
+	*
+	* The log level.
+	*/
+	optional<string> logLevel;
+
+	/** CRIT*/
+	constant string logLevel_CRIT := "CRIT";
+
+	/** DEBUG*/
+	constant string logLevel_DEBUG := "DEBUG";
+
+	/** ERROR*/
+	constant string logLevel_ERROR := "ERROR";
+
+	/** FATAL*/
+	constant string logLevel_FATAL := "FATAL";
+
+	/** INFO*/
+	constant string logLevel_INFO := "INFO";
+
+	/** OFF*/
+	constant string logLevel_OFF := "OFF";
+
+	/** TRACE*/
+	constant string logLevel_TRACE := "TRACE";
+
+	/** WARN*/
+	constant string logLevel_WARN := "WARN";
+
+}
+
+/**
+* Logging
+*
+* Logs the input field on specified log level
+*
+* @$blockCategory Output
+*/
+event Logging {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/**The parameters for the block.*/
+	Logging_$Parameters $parameters;
+
+
+	/**
+	* This action is called by the framework, it receives the input values and contains the logic of the block.
+	* 
+	* Sends the output using the HTTP protocol.
+	*
+	* @param $activation  The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value Input value to the block. This will be sent in the body of the request.
+	* @param $input_object Input object to the block. This will be put in the url of the request.
+	* @param $modelScopeParameters  Dictionary containing the information about the model.
+	*
+	* @$inputName object Object
+	*/
+	action $process(Activation $activation, any $input_object, dictionary<string, any> $modelScopeParameters) {
+
+		string logMessage := $input_object.valueToString();
+		ifpresent $parameters.logLevel as logLevel {
+			if(logLevel = $parameters.logLevel_CRIT){
+				log logMessage at CRIT;
+			}
+			else if(logLevel = $parameters.logLevel_DEBUG){
+				log logMessage at DEBUG;
+			}
+			else if(logLevel = $parameters.logLevel_ERROR){
+				log logMessage at ERROR;
+			}
+			else if(logLevel = $parameters.logLevel_FATAL){
+				log logMessage at FATAL;
+			}
+			else if(logLevel = $parameters.logLevel_INFO){
+				log logMessage at INFO;
+			}
+			else if(logLevel = $parameters.logLevel_OFF){
+				log logMessage at OFF;
+			}
+			else if(logLevel = $parameters.logLevel_TRACE){
+				log logMessage at TRACE;
+			}
+			else if(logLevel = $parameters.logLevel_WARN){
+				log logMessage at WARN;
+			}
+			else {
+				log logMessage;
+			}
+		}
+		else {
+			log logMessage;
+		}
+	}
+
+
+	/**To let framework know block is using latest APIs.*/
+	constant integer BLOCK_API_VERSION := 2;
+}
