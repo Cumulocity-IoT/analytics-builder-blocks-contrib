@@ -137,6 +137,7 @@ event CreateServiceRequest_$Parameters {
             }
 
             payload["status"] := {"id": "1", "name": "New"};
+            payload["priority"] := {"name": "high","ordinal": 1};
 
             Request srRequest := requestInterface.createRequest("POST", "/service/service-request-mgmt/api/service/request", payload);
 		    srRequest.execute(responseHandler);
