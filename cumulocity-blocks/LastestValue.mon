@@ -65,8 +65,7 @@ event LatestValue_$Parameters {
 /**
  * Latest Value Input.
  *
- * Receives <tt>Measurement</tt> the latest value of a measurement from Cumulocity
- * when it is activated.
+ * Receives the latest value of a measurement from Cumulocity when it is activated.
  * If using a group for input, select a device within the group to select the fragment and series, and then change
  * to the desired group.
  *
