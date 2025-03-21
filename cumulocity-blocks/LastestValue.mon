@@ -1,0 +1,127 @@
+/* Copyright (c) 2025 Cumulocity GmbH, Düsseldorf, Germany and/or its licensors
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except 
+ * in compliance with the License. You may obtain a copy of the License at 
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, 
+ * software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+ * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language 
+ * governing permissions and limitations under the License.
+ */
+
+package apamax.analyticsbuilder.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.Value;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+using com.apama.cumulocity.Util;
+
+using com.apama.cumulocity.Measurement;
+using com.apama.cumulocity.MeasurementValue;
+using com.apama.cumulocity.MeasurementFragment;
+using com.apama.cumulocity.FindMeasurement;
+using com.apama.cumulocity.FindMeasurementResponse;
+using com.apama.cumulocity.FindMeasurementResponseAck;
+
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
+
+event LatestValue_$Parameters {
+
+	/**
+	 * Input Source.
+	 *
+	 * Defines the source from which the measurement has been received.
+	 *
+	 * This can be a single device, an asset, an object that references or contains a group of devices, or all input sources.
+	 * @$semanticType c8y_deviceOrGroupId
+	 */
+	any deviceId;
+
+	/**
+	 * Fragment and Series.
+	 *
+	 * The fragment the block is listening for.
+	 *
+	 * @$semanticType c8y_fragmentSeries_KPI_supportedMeasurements_DataPoints
+	 */
+	string fragmentSeries;  
+
+	/** Validate that values for all parameters have been provided. */
+	action $validate() {
+		BlockBase.throwsOnEmpty(deviceId, "deviceId", self);
+		sequence<string> fragSeries := ".".split(fragmentSeries);
+		if fragSeries.size() != 2 or fragSeries[0] = "" or fragSeries[1] = "" {
+			throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.LatestValue_expected_frag.series", [<any> fragmentSeries]);
+		}
+	}
+
+}
+
+/**
+ * Latest Value Input.
+ *
+ * Receives <tt>Measurement</tt> the latest value of a measurement from Cumulocity
+ * when it is activated.
+ * If using a group for input, select a device within the group to select the fragment and series, and then change
+ * to the desired group.
+ *
+ * @$blockCategory Input
+ * @$consumesInput
+ * @$blockType c8y_Input
+ * @$derivedName $fragmentSeries Latest
+ * @$titleIsDerived true
+ */
+event LatestValue {
+	
+	BlockBase $base;
+	
+	/**The parameters for the block. */
+	LatestValue_$Parameters $parameters;
+	
+	action $init() {
+        sequence<string> parts := ".".split($parameters.fragmentSeries);
+        string fragment := parts[0];
+        string series := parts[1];
+
+		FindMeasurement findMeasurement := new FindMeasurement;
+        findMeasurement.reqId := Util.generateReqId();
+
+        findMeasurement.params.add("source", $parameters.deviceId.valueToString());
+        findMeasurement.params.add("valueFragmentType", fragment);
+        findMeasurement.params.add("valueFragmentSeries", series);
+        findMeasurement.params.add("dateFrom", (0.0).toString());
+        findMeasurement.params.add("dateTo", currentTime.toString());
+		findMeasurement.params.add("pageSize", "1");
+		findMeasurement.params.add("revert", "true");
+		monitor.subscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
+
+ 		on FindMeasurementResponse(reqId=findMeasurement.reqId) as resp and not FindMeasurementResponseAck(reqId=findMeasurement.reqId) {
+			monitor.unsubscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);			
+            float value := resp.measurement.measurements[fragment][series].value;
+            $base.createTimerWith(TimerParams.absolute(currentTime).withPartition(new Partition_Broadcast).withPayload(value));
+        }
+        send findMeasurement to FindMeasurement.SEND_CHANNEL;		
+	}
+
+	action $timerTriggered(Activation $activation, any $payload) {
+        switch($payload) {
+            case float: { 
+                $setOutput_latest($activation,$payload); 
+            }              
+            default: {// nothing
+            }
+        }
+
+	}   
+
+    /**
+	 * latest
+	 *
+	 */
+	action<Activation,float> $setOutput_latest;
+}
