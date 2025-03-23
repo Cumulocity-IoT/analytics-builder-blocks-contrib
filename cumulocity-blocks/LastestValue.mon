@@ -96,6 +96,7 @@ event LatestValue {
         findMeasurement.params.add("dateFrom", (0.0).toString());
         findMeasurement.params.add("dateTo", currentTime.toString());
 		findMeasurement.params.add("pageSize", "1");
+		findMeasurement.params.add("currentPage", "1");
 		findMeasurement.params.add("revert", "true");
 		monitor.subscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
 
