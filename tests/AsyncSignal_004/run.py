@@ -19,9 +19,9 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		
 		self.sendEventStrings(correlator,
 		                      self.timestamp(1),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(),{})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default()),{})',
 							  self.timestamp(2),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(),{"a":any(float,100)})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default()),{"a":any(float,100)})',
 							  self.timestamp(3),
 							  channel='apamax.analyticsbuilder.blocks.AsyncSignal')
 
