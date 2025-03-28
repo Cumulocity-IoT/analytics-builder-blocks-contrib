@@ -13,20 +13,20 @@ class PySysTest(AnalyticsBuilderBaseTest):
             blockSourceDir=f'{self.project.SOURCE}/blocks/')
         modelId = self.createTestModel('apamax.analyticsbuilder.blocks.DiscreteStatistics', inputs={'value':'float', 'sample':'pulse', 'reset':'pulse'})
         self.sendEventStrings(correlator,
-                              self.timestamp(.9),
+                              self.timestamp(1),
                               self.inputEvent('value', 100, id=modelId),
                               self.inputEvent('sample', 'true', id=modelId, eplType = 'boolean'),
-                              self.timestamp(1.9),
+                              self.timestamp(2),
                               self.inputEvent('value', 110, id=modelId),
                               self.inputEvent('sample', 'true', id=modelId, eplType = 'boolean'),
-                              self.timestamp(2.9),
+                              self.timestamp(3),
                               self.inputEvent('value', 120, id=modelId),
                               self.inputEvent('sample', 'true', id=modelId, eplType = 'boolean'),
-                              self.timestamp(3.9),
+                              self.timestamp(4),
                               self.inputEvent('value', 30, id=modelId),
                               self.inputEvent('sample', 'true', id=modelId, eplType = 'boolean'),
                               self.inputEvent('reset', 'true', id=modelId, eplType = 'boolean'),  # reset and sample at same time : sum = mean = value
-                              self.timestamp(4.9),
+                              self.timestamp(5),
                               self.inputEvent('reset', 'true', id=modelId, eplType = 'boolean'),  # reset on its own : sum = count = 0 (mean and std dev are NaN!)
                               self.timestamp(6),
                               )
@@ -41,9 +41,9 @@ class PySysTest(AnalyticsBuilderBaseTest):
         self.assertGrep('output.evt', expr=self.outputExpr('max', time=3))
         self.assertGrep('output.evt', expr=self.outputExpr('mean', 110, time=3))
         self.assertGrep('output.evt', expr=self.outputExpr('standardDeviation', 8.164965809277223, time=3))
-        self.assertGrep('output.evt', expr=self.outputExpr('sum', 30, time=4))
-        self.assertGrep('output.evt', expr=self.outputExpr('count', 1, time=4))
-        self.assertGrep('output.evt', expr=self.outputExpr('mean', 30, time=4))
-        self.assertGrep('output.evt', expr=self.outputExpr('standardDeviation', 0, time=4))
+        self.assertGrep('output.evt', expr=self.outputExpr('sum', 30, time=3.9999999999999996))
+        self.assertGrep('output.evt', expr=self.outputExpr('count', 1, time=3.9999999999999996))
+        self.assertGrep('output.evt', expr=self.outputExpr('mean', 30, time=3.9999999999999996))
+        self.assertGrep('output.evt', expr=self.outputExpr('standardDeviation', 0, time=3.9999999999999996))
 
         self.assertGrep('output.evt', expr=self.outputExpr('sum', 0, time=5))

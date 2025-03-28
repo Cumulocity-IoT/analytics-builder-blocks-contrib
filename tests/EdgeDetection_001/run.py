@@ -48,7 +48,7 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
 		OUTPUT_REGEX = r'apamax.analyticsbuilder.test.Output[(]"%(outputId)s","%(modelId)s","[^"]*",%(time)s,any[(][^"]*,(.*)[)],[{].*[}][)]'
-		self.assertThat("expected == output", expected='true', output__eval="self.assertGrep('output.evt', expr=OUTPUT_REGEX%{'outputId':'isEdge', 'modelId':'model_0','time':7.1}).group(1)")
+		self.assertThat("expected == output", expected='true', output__eval="self.assertGrep('output.evt', expr=OUTPUT_REGEX%{'outputId':'isEdge', 'modelId':'model_0','time':7}).group(1)")
 		
 		
 			

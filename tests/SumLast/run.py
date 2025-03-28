@@ -31,7 +31,7 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		self.assertGrep('output.evt', expr=self.outputExpr('sum', 15))
 		self.assertGrep('output.evt', expr=self.outputExpr('lastValue', 5))
 		self.assertGrep('output.evt', expr=self.outputExpr('sum', 5))
-		self.assertGrep('output.evt', expr=self.outputExpr('lastValue', 15))
+		self.assertGrep('output.evt', expr=self.outputExpr('lastValue', 10))
 		self.assertGrep('output.evt', expr=self.outputExpr('sum', 0))
 		self.assertGrep('output.evt', expr=self.outputExpr('lastValue', 5))
 

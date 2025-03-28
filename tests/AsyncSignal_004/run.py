@@ -8,10 +8,6 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
 
-	def preInjectBlock(self, corr):
-		corr.injectEPL([self.project.APAMA_HOME +'/monitors/'+i+'.mon' for i in ['TimeFormatEvents']])
-
-
 	def execute(self):
 		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
 		
@@ -23,9 +19,9 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		
 		self.sendEventStrings(correlator,
 		                      self.timestamp(1),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(),{})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default()),{})',
 							  self.timestamp(2),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(),{"a":any(float,100)})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","'+self.modelId+'",any(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default()),{"a":any(float,100)})',
 							  self.timestamp(3),
 							  channel='apamax.analyticsbuilder.blocks.AsyncSignal')
 

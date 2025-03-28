@@ -30,10 +30,6 @@ class PySysTest(AnalyticsBuilderBaseTest):
 								json.dumps(json.dumps(params))])
 		return f'apamax.analyticsbuilder.test.SendManagedObject({managedObjectParams})'
 
-	def preInjectBlock(self, corr):
-		corr.injectEPL([self.project.APAMA_HOME +'/monitors/'+i+'.mon' for i in ['TimeFormatEvents']])
-
-
 	def execute(self):
 		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/cumulocity-blocks/')
 		

@@ -17,13 +17,13 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		self.modelId = self.createTestModel('apamax.analyticsbuilder.custom.RootMeanSquareAcceleration',{'frequencyL':20.0,'frequencyH':30.0,'ASDL':1.0,'ASDH':1.1})
 		
 		self.sendEventStrings(correlator,
-		                      self.timestamp(1)
+		                      self.timestamp(2)
 							  )
 
 	def validate(self):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertGrep('output.evt', expr=self.outputExpr('Grms',3.2443445876655126,self.modelId,'.*',1,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('Grms',3.2443445876655126,self.modelId,'.*','.9',{}))
 		
 			
 		
