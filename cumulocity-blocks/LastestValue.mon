@@ -103,7 +103,7 @@ event LatestValue {
  		on FindMeasurementResponse(reqId=findMeasurement.reqId) as resp and not FindMeasurementResponseAck(reqId=findMeasurement.reqId) {
 			monitor.unsubscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);			
             float value := resp.measurement.measurements[fragment][series].value;
-            $base.createTimerWith(TimerParams.absolute(currentTime).withPartition(new Partition_Broadcast).withPayload(value));
+			$base.createTimerWith(TimerParams.relative(0.0).withPartition(new Partition_Broadcast).withPayload(value));
         }
         send findMeasurement to FindMeasurement.SEND_CHANNEL;		
 	}

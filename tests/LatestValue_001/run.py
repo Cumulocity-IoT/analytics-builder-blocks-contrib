@@ -57,5 +57,5 @@ class PySysTest(AnalyticsBuilderBaseTest):
 	def validate(self):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.test.Output\("latest","model_0","apama.analyticsbuilder.Partition_Default\(\)",0,any\(float,12\),{}\)')
+		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.test.Output\("latest","model_0","apama.analyticsbuilder.Partition_Default\(\)",-.1,any\(float,12\),{}\)')
 		
