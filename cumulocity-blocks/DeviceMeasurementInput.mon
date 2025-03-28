@@ -17,7 +17,7 @@ using apama.analyticsbuilder.Value;
 using apama.analyticsbuilder.TimerParams;
 using apama.analyticsbuilder.L10N;
 using apama.analyticsbuilder.ABConstants;
-using apama.analyticsbuilder.cumulocity.MeasurementFragment;
+using com.apama.cumulocity.MeasurementFragment;
 using com.apama.cumulocity.Measurement;
 using com.apama.exceptions.Exception;
 
@@ -140,7 +140,7 @@ event DeviceMeasurementInput{
 	action $init() {
 		string id;
 		for id in inputHandler.getDevices() {
-			on all MeasurementFragment(source = id, fragment = fragment, series= series) as e{
+			on all MeasurementFragment(source = id, valueFragment = fragment, valueSeries= series) as e{
 				extractMeasurement(e);
 			}
 		}
@@ -173,8 +173,8 @@ event DeviceMeasurementInput{
 		value.value := measurement.value;
 		value.timestamp := $activation.timestamp;
 		value.properties["value"] := measurement.value;
-		if measurement.measurementId != "" {
-			value.properties["id"] := measurement.measurementId;
+		if measurement.id != "" {
+			value.properties["id"] := measurement.id;
 		}
 
 		if measurement.type != "" {
@@ -188,20 +188,16 @@ event DeviceMeasurementInput{
 		if measurement.source != "" {
 			value.properties["source"] :=  measurement.source ;
 		}
-		if measurement.fragment != "" {
-			value.properties["fragment"] := measurement.fragment ;
+		if measurement.valueFragment != "" {
+			value.properties["fragment"] := measurement.valueFragment ;
 		}
-		if measurement.series != "" {
-			value.properties["series"] := measurement.series ;
+		if measurement.valueSeries != "" {
+			value.properties["series"] := measurement.valueSeries ;
 		}
 
 		string k;
 		for k in measurement.params.keys()  {
 			value.properties["measurement_"+k] := measurement.params[k]; 
-		}
-
-		for k in measurement.measurementValueParams.keys()  {
-			value.properties["value_"+k] := measurement.measurementValueParams[k];
 		}
 
 		value.properties.add("unit",measurement.unit);
