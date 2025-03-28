@@ -8,10 +8,6 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
 
-	def preInjectBlock(self, corr):
-		corr.injectEPL([self.project.APAMA_HOME +'/monitors/'+i+'.mon' for i in ['TimeFormatEvents']])
-
-
 	def execute(self):
 		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
 		
