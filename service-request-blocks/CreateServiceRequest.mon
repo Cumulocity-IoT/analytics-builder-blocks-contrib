@@ -28,15 +28,15 @@ using com.softwareag.connectivity.httpclient.Response;
 
 event CreateServiceRequest_$Parameters {
 
-	/**
-	 * Device or Trigger Device.
-	 *
-	 * The device (or for models handling groups, Trigger Device) to which the measurement is to be sent.
-	 *
-	 * The model editor uses the current device name. This is mapped internally to the device identifier.
-	 * @$semanticType c8y_deviceIdOrCurrentDevice
-	 */
-	any deviceId;
+    /**
+     * Device or Trigger Device.
+     *
+     * The device (or for models handling groups, Trigger Device) to which the measurement is to be sent.
+     *
+     * The model editor uses the current device name. This is mapped internally to the device identifier.
+     * @$semanticType c8y_deviceIdOrCurrentDevice
+     */
+    any deviceId;
 
     /**
      * Service Request Type.
@@ -57,11 +57,11 @@ event CreateServiceRequest_$Parameters {
      */
     optional<string> priority;
     /** High */
-    constant string type_high := "high";
+    constant string priority_high := "high";
     /** Medium */
-    constant string type_medium := "medium";
+    constant string priority_medium := "medium";
     /** Low */
-    constant string type_low := "low";
+    constant string priority_low := "low";
     /**
      * Service Request Description
      *
