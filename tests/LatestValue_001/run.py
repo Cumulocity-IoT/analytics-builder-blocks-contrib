@@ -1,7 +1,11 @@
-#
-#  $Copyright (c) 2019 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
-#   This file is licensed under the Apache 2.0 license - see https://www.apache.org/licenses/LICENSE-2.0
-#
+# Copyright (c) 2025 Cumulocity GmbH, Düsseldorf, Germany and/or its licensors
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except 
+# in compliance with the License. You may obtain a copy of the License at 
+# http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, 
+# software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+# OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language 
+# governing permissions and limitations under the License.
+
 
 from pysys.constants import *
 from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
@@ -39,21 +43,19 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		correlator.receive('all.evt')
 		
 		# Deploying a new model with correct parameter.
-		self.modelId = self.createTestModel('apamax.analyticskit.blocks.cumulocity.CreateMultiMeasurement',
-									  {'deviceId':'d123', 'measurementType': 'c8y_Acceleration'},
-									  inputs={'time': None})
+		self.modelId = self.createTestModel('apamax.analyticsbuilder.blocks.cumulocity.LatestValue',
+									  {'deviceId':'d123', 'fragmentSeries': 'c8y_Acceleration.X'})
 		
 		self.sendEventStrings(correlator,
 							self.inputManagedObject('d123', '' ,'',[],[],[],[],[],[],{},{'c8y_IsDevice':{}}))
 
 		self.sendEventStrings(correlator,
 		                      self.timestamp(1),
-		                      self.inputEvent('value', True, id = self.modelId, properties={'c8y_Acceleration.x':1.0,'c8y_Acceleration.y':0.0,'c8y_Acceleration.z':2.0}),
-		                      self.timestamp(2)
+							  self.timestamp(10),
 							  )
 
 	def validate(self):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertGrep("waiter.out", expr='com.apama.cumulocity.Measurement\("","c8y_Acceleration","d123",1,{"c8y_Acceleration":{"x":com.apama.cumulocity.MeasurementValue\(1,"",{}\),"y":com.apama.cumulocity.MeasurementValue\(0,"",{}\),"z":com.apama.cumulocity.MeasurementValue\(2,"",{}\)}},{"apama_analytics_modelName":any\(string,"model_0"\)}\)')
+		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.test.Output\("latest","model_0","apama.analyticsbuilder.Partition_Default\(\)",-.1,any\(float,12\),{}\)')
 		

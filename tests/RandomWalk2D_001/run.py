@@ -45,10 +45,10 @@ class PySysTest(AnalyticsBuilderBaseTest):
 	def validate(self):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertEval('4 <= {currentPosition} <= 6', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0","",1[.]1,any[(]float,(.*)[)],')))
-		self.assertEval('-1 <= {currentPosition} <= 1', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0","",1[.]1,any[(]float,(.*)[)],')))
-		self.assertEval('3 <= {currentPosition} <= 7', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0","",2[.]1,any[(]float,(.*)[)],')))
-		self.assertEval('-2 <= {currentPosition} <= 2', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0","",2[.]1,any[(]float,(.*)[)],')))
-		self.assertEval('2 <= {currentPosition} <= 8', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0","",3[.]1,any[(]float,(.*)[)],')))
-		self.assertEval('-3 <= {currentPosition} <= 3', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0","",3[.]1,any[(]float,(.*)[)],')))
+		self.assertEval('4 <= {currentPosition} <= 6', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0",".*",1,any[(]float,(.*)[)],')))
+		self.assertEval('-1 <= {currentPosition} <= 1', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0",".*",1,any[(]float,(.*)[)],')))
+		self.assertEval('3 <= {currentPosition} <= 7', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0",".*",2,any[(]float,(.*)[)],')))
+		self.assertEval('-2 <= {currentPosition} <= 2', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0",".*",2,any[(]float,(.*)[)],')))
+		self.assertEval('2 <= {currentPosition} <= 8', currentPosition=float(self.getExprFromFile('output.evt', '"currentXPosition","model_0",".*",3,any[(]float,(.*)[)],')))
+		self.assertEval('-3 <= {currentPosition} <= 3', currentPosition=float(self.getExprFromFile('output.evt', '"currentYPosition","model_0",".*",3,any[(]float,(.*)[)],')))
 		

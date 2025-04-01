@@ -11,7 +11,7 @@ To add these blocks to a tenant, you will require:
 Installation Steps:
 
 ```
-. $SAG_INSTALL/Apama/bin/apama_env
+. /opt/cumulocity/Apama/bin/apama_env
 git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git
 git clone https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib.git
 ./apama-analytics-builder-block-sdk/analytics_builder build extension \

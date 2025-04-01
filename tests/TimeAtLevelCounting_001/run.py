@@ -8,7 +8,7 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
 	def execute(self):
-		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
+		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/',initialCorrelatorTime=1582902000.0)
 		
 		# engine_receive process listening on all the channels.
 		correlator.receive('all.evt')
@@ -30,9 +30,9 @@ class PySysTest(AnalyticsBuilderBaseTest):
 							  self.timestamp(1582904500),
 							  self.inputEvent('value', 49.99, id = self.modelId),
 		                      self.timestamp(1582905000),
-							   self.inputEvent('value', 47.00, id = self.modelId),
+							  self.inputEvent('value', 47.00, id = self.modelId),
 		                      self.timestamp(1582905200),
-							   self.inputEvent('value', 50.01, id = self.modelId),
+							  self.inputEvent('value', 50.01, id = self.modelId),
 		                      self.timestamp(1582906000),
 							  self.inputEvent('value', 48.0, id = self.modelId),
 		                      self.timestamp(1582907000),
@@ -41,12 +41,12 @@ class PySysTest(AnalyticsBuilderBaseTest):
 	def validate(self):
 
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582902000.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582903000.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',10,self.modelId,"",1582903010.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',910,self.modelId,"",1582903910.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',1000,self.modelId,"",1582904000.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582904500.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582905000.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582905200.1,{}))
-		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"",1582906000.1,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0.0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582902000,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582903000,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',10,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582903010,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',910,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582903910,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',1000,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582904000,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582904500,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582905000,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582905200,{}))
+		self.assertGrep('output.evt', expr=self.outputExpr('timeAtLevelOutput',0,self.modelId,"apama\.analyticsbuilder\.Partition_Default\(\)",1582906000,{}))
