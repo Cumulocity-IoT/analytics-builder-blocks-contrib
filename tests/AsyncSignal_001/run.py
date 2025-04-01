@@ -8,10 +8,6 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
 
-	def preInjectBlock(self, corr):
-		corr.injectEPL([self.project.APAMA_HOME +'/monitors/'+i+'.mon' for i in ['TimeFormatEvents']])
-
-
 	def execute(self):
 		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
 		
@@ -35,6 +31,6 @@ class PySysTest(AnalyticsBuilderBaseTest):
 	def validate(self):
 		# Verifying that the model is deployed successfully.
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
-		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.blocks.AsyncSignal\("Reset","",any\(\),\{\}\)')
-		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.blocks.AsyncSignal\("Reset","",any\(\),\{"a":any\(float,100\)\}\)')
+		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.blocks.AsyncSignal\("Reset","model_0",any\(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default\(\)\),\{\}\)')
+		self.assertGrep("waiter.out", expr='apamax.analyticsbuilder.blocks.AsyncSignal\("Reset","model_0",any\(apama.analyticsbuilder.Partition_Default,apama.analyticsbuilder.Partition_Default\(\)\),\{"a":any\(float,100\)\}\)')
 		
