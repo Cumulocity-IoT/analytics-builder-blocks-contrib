@@ -51,6 +51,18 @@ event CreateServiceRequest_$Parameters {
      */
     optional<string> title;
     /**
+     * Priority.
+     *
+     * Priority of the service request.
+     */
+    optional<string> priority;
+    /** High */
+    constant string type_high := "high";
+    /** Medium */
+    constant string type_medium := "medium";
+    /** Low */
+    constant string type_low := "low";
+    /**
      * Service Request Description
      *
      * The detailed description of the service request.
@@ -128,6 +140,18 @@ event CreateServiceRequest_$Parameters {
                 }
             }
 
+            payload["priority"] := {"name": "high","ordinal": 1};
+            ifpresent $parameters.priority as priority {
+                if priority = "high" {
+                    payload["priority"] := {"name": "high","ordinal": 1};
+                } else if priority = "medium" {
+                    payload["priority"] := {"name": "medium","ordinal": 2};
+                } else if priority = "low" {
+                    payload["priority"] := {"name": "low","ordinal": 3};
+                }
+
+            }
+
             if($input_createServiceRequest.properties.hasKey("id")) {
                 payload["alarmRef"] := {"id": $input_createServiceRequest.properties["id"]};
             }
@@ -137,7 +161,6 @@ event CreateServiceRequest_$Parameters {
             }
 
             payload["status"] := {"id": "1", "name": "New"};
-            payload["priority"] := {"name": "high","ordinal": 1};
 
             Request srRequest := requestInterface.createRequest("POST", "/service/service-request-mgmt/api/service/request", payload);
 		    srRequest.execute(responseHandler);
