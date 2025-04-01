@@ -1,0 +1,180 @@
+/* Copyright (c) 2025 Cumulocity GmbH, Düsseldorf, Germany and/or its licensors
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except 
+ * in compliance with the License. You may obtain a copy of the License at 
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, 
+ * software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+ * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language 
+ * governing permissions and limitations under the License.
+ */
+
+package apamax.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.NameValue;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+using com.apama.cumulocity.Operation;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputParams;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputHandler;
+using apama.analyticsbuilder.Promise;
+
+using com.apama.cumulocity.CumulocityRequestInterface;
+using com.softwareag.connectivity.httpclient.Request;
+using com.softwareag.connectivity.httpclient.Response;
+
+
+event CreateServiceRequest_$Parameters {
+
+    /**
+     * Device or Trigger Device.
+     *
+     * The device (or for models handling groups, Trigger Device) to which the measurement is to be sent.
+     *
+     * The model editor uses the current device name. This is mapped internally to the device identifier.
+     * @$semanticType c8y_deviceIdOrCurrentDevice
+     */
+    any deviceId;
+
+    /**
+     * Service Request Type.
+     *
+     * The type of service request to create (e.g. "alarm").
+     */
+    optional<string> type;
+    /**
+     * Service Request Title
+     *
+     * The title or short summary of the service request.
+     */
+    optional<string> title;
+    /**
+     * Priority.
+     *
+     * Priority of the service request.
+     */
+    optional<string> priority;
+    /** High */
+    constant string priority_high := "high";
+    /** Medium */
+    constant string priority_medium := "medium";
+    /** Low */
+    constant string priority_low := "low";
+    /**
+     * Service Request Description
+     *
+     * The detailed description of the service request.
+     */
+    optional<string> description;
+
+}
+
+/** 
+ * Service Request Output.
+ * 
+ * This block can be used to trigger the creation of service requests in 
+ * field service management (FSM) and integrated ticketing systems (ITS) using 
+ * this microservice (https://github.com/Cumulocity-IoT/cumulocity-microservice-service-request-mgmt)
+ * 
+ * @$blockCategory Output
+ * @$producesOutput
+ * @$derivedName $type Service Request
+ * @$titleIsDerived true
+ */
+ event CreateServiceRequest {
+
+	BlockBase $base;
+	/** The parameters for the block. */
+	CreateServiceRequest_$Parameters $parameters;
+
+    CumulocityRequestInterface requestInterface;
+
+    action $init() {
+        requestInterface := CumulocityRequestInterface.connectToCumulocity();
+    }
+
+	/**
+	 * Create and send a service request
+	 * @param $input_createServiceRequest Creates a service request when a signal is received. If the pulse contains properties from events or alarms, they will be used to replace parameters and inputs.
+	 * @param $input_typeInput Sets the type of the service request. The Type parameter must not be set if this is used.
+	 * @param $input_titleInput Sets the title of the service request. The Title parameter must not be set if this is used.
+	 * @param $input_descriptionInput Sets the description of the service request. The Description pe parameter must not be set if this is used.
+	 * @$inputName createServiceRequest Create Request
+	 * @$inputName typeInput Type
+     * @$inputName titleInput Title
+     * @$inputName descriptionInput Description
+	 */
+	action $process(Activation $activation, dictionary<string,any>$modelScopeParameters,
+			Value $input_createServiceRequest, optional<string> $input_typeInput, optional<string> $input_titleInput, optional<string> $input_descriptionInput) {
+
+        dictionary<string,any> payload := new dictionary<string,any>;
+
+		if <boolean>$input_createServiceRequest.value {
+            ifpresent $input_typeInput {
+                payload["type"] := $input_typeInput;
+            } else {
+                ifpresent $parameters.type as type {
+                    payload["type"] := type;
+                }
+            }
+
+            ifpresent $input_titleInput {
+                payload["title"] := $input_titleInput;
+            } else {
+                ifpresent $parameters.title as title {
+                    payload["title"]  := title;
+                } else {
+                    if($input_createServiceRequest.properties.hasKey("text")) {
+                        payload["title"] := $input_createServiceRequest.properties["text"];
+                    }
+                }
+            }
+
+            ifpresent $input_descriptionInput {
+                payload["description"] := $input_descriptionInput;
+            } else {
+                ifpresent $parameters.description as description {
+                    payload["description"] := description;
+                }
+            }
+
+            payload["priority"] := {"name": "high","ordinal": 1};
+            ifpresent $parameters.priority as priority {
+                if priority = "high" {
+                    payload["priority"] := {"name": "high","ordinal": 1};
+                } else if priority = "medium" {
+                    payload["priority"] := {"name": "medium","ordinal": 2};
+                } else if priority = "low" {
+                    payload["priority"] := {"name": "low","ordinal": 3};
+                }
+
+            }
+
+            if($input_createServiceRequest.properties.hasKey("id")) {
+                payload["alarmRef"] := {"id": $input_createServiceRequest.properties["id"]};
+            }
+
+            if($input_createServiceRequest.properties.hasKey("source")) {
+                payload["source"] := {"id": $input_createServiceRequest.properties["source"]};
+            }
+
+            payload["status"] := {"id": "1", "name": "New"};
+
+            Request srRequest := requestInterface.createRequest("POST", "/service/service-request-mgmt/api/service/request", payload);
+		    srRequest.execute(responseHandler);
+		}
+
+
+    }
+	action responseHandler(Response srResponse) {
+		integer statusCode := srResponse.statusCode;
+		string payload := srResponse.payload.data.toString();
+		log "response status code = " + statusCode.toString() +
+			", response body = " + payload at INFO;
+	}
+
+
+    constant string $INPUT_TYPE_createServiceRequest := "pulse";
+ }
