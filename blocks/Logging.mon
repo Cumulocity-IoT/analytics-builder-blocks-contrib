@@ -3,7 +3,7 @@
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Cumulocity GmbH
  */
 
-package apamax.analyticsbuilder.samples;
+package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.BlockBase;
 using apama.analyticsbuilder.Activation;
@@ -11,7 +11,7 @@ using apama.analyticsbuilder.Activation;
 
 
 /**
-* Event definition of the parameters for the HTTP Output block.
+* Event definition of the parameters for the Logging block.
 */
 event Logging_$Parameters {
 
@@ -70,17 +70,15 @@ event Logging {
 	/**
 	* This action is called by the framework, it receives the input values and contains the logic of the block.
 	* 
-	* Sends the output using the HTTP protocol.
+	* Logs the input object on specified log level.
 	*
 	* @param $activation  The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value Input value to the block. This will be sent in the body of the request.
-	* @param $input_object Input object to the block. This will be put in the url of the request.
-	* @param $modelScopeParameters  Dictionary containing the information about the model.
+	* @param $input_object Input object to the block. This will be logged.
 	*
 	* @$inputName object Object
 	*/
-	action $process(Activation $activation, any $input_object, dictionary<string, any> $modelScopeParameters) {
+	action $process(Activation $activation, any $input_object) {
 
 		string logMessage := $input_object.valueToString();
 		ifpresent $parameters.logLevel as logLevel {
