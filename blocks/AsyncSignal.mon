@@ -148,7 +148,7 @@ event SendAsyncSignal {
 			if($parameters.scopeToPartition) {
 				partition := $activation.partition;
 			}
-            send AsyncSignal($parameters.signalType, modelId, partition, params) to AsyncSignal.CHANNEL;
+            send AsyncSignal($parameters.signalType, modelId, partition, params) to $base.getTenantDetails().getChannel(AsyncSignal.CHANNEL);
         }
 	}
 
@@ -181,7 +181,7 @@ event ReceiveAsyncSignal {
 	 * Method starts listening for the signals
 	 */
 	action $init() {
-        monitor.subscribe(AsyncSignal.CHANNEL);
+        monitor.subscribe($base.getTenantDetails().getChannel(AsyncSignal.CHANNEL));
 		string filter := "";
 		if($parameters.scopeToModel) {
 			filter := $base.modelId;
