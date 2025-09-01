@@ -1,0 +1,227 @@
+
+package com.industry.analytics;
+
+event AmplitudeFrequency {
+	integer frequency;
+	decimal amplitude;
+}
+
+/** 
+ *  This event provides functionality to calculate 
+ *  Fast-Fourier Transformations using the Cooley-Tukey algorithm.
+ *  Fourier analysis converts data from a time-domain to a representation
+ *  in the frequency domain (and vice versa).
+ */
+event FFT {
+	
+	/** This action calculates the inverse FFT */
+	static action ifft( sequence<ComplexType> amplitudes ) returns sequence<ComplexType> {
+		integer N  := amplitudes.size();
+		decimal iN := 1.0d / N.toDecimal();
+	 
+		// Conjugate if imaginary part is not 0
+		integer i := 0;
+		ComplexType currVal;
+		for currVal in amplitudes {
+			amplitudes[i].imaginary := -currVal.imaginary;
+			i := i + 1;
+		}
+		
+		// Apply fourier transform
+		amplitudes := cfft( amplitudes );
+	 
+		while i < N {
+			// Conjugate again
+			amplitudes[i].imaginary := -amplitudes[i].imaginary;
+			// Scale
+			amplitudes[i].real      := amplitudes[i].real * iN;
+			amplitudes[i].imaginary := amplitudes[i].imaginary * iN;
+			
+			i := i + 1;
+		}
+		return amplitudes;
+	}
+
+	/** Calculate the FFT based on simple numbers */	
+	static action fft( sequence<decimal> buffer ) returns sequence<ComplexType> {
+		
+		// Create the set of complex numbers from the buffer
+		return cfft( ComplexType.initFromSequence( buffer ) );
+	}
+
+	/** Calculate the FFT based on complex numbers */	
+	static action cfft( sequence<ComplexType> buffer ) returns sequence<ComplexType> {
+		
+		integer N := buffer.size();
+		if( N <= 1 ) then {
+			return buffer;
+		}
+	 
+		integer hN := N / 2;
+		 
+		sequence<ComplexType> even := [];
+		sequence<ComplexType> odd  := [];
+		
+		// Set the size of each sequence to be half of the total
+		even.setSize( hN );
+		odd.setSize( hN );
+
+		// Divide data
+		integer i := 0;
+		while i < hN {
+			even[i] := buffer[i*2];
+			odd[i]  := buffer[i*2+1];
+			
+			// Increment the index
+			i := i + 1;
+		}
+		
+		// Analyze
+		even := cfft( even );
+		odd  := cfft( odd );
+	 
+		// Calculate this upfront for performance
+		decimal a := -2.0d * decimal.PI;
+
+		// Combine results
+		integer k := 0;
+        while k < hN {        	
+    		decimal p := (k / N).toDecimal();
+    		decimal term := a * k.toDecimal() / N.toDecimal();
+    		ComplexType t := ComplexType.init(0.0d, term ).cexp().multiply( odd[k] );
+
+			buffer[k]      := even[ k ].add( t );
+    		odd[k]         := buffer[ k ];
+			buffer[k + hN] := even[ k ].subtract( t );
+			even[k]        := buffer[ k + hN ];
+
+			// Increment the index
+	        k := k + 1;
+		}
+		return buffer;
+	}
+	
+	/** Get the set of amplitude values from a previously calculated set of FFT results */	
+	static action getAmplitudes( sequence<ComplexType> fftResult ) returns sequence<decimal> {
+		sequence<decimal> magnitude := [];
+		integer fftSize := fftResult.size();
+		decimal fftSizeAsDecimal := fftSize.toDecimal();
+	
+		// Iterate over the FFT values
+		integer i := 0;
+		while i < (fftSize / 2) {
+			// Add to the magnitude sequence for the power spectrum
+			magnitude.append( 2.0d * (fftResult[i].abs() / fftSizeAsDecimal ) );
+			
+			// Increment the index
+			i := i + 1;
+		}
+		return magnitude;
+	}
+	                      
+	/** Get the set of frequency values from a previously 
+	 *  calculated set of FFT results */	
+    static action getFrequencies( integer sampleSize, sequence<ComplexType> fftResult ) returns sequence<integer> {
+		sequence<integer> frequencies := [];
+		integer fftSize := fftResult.size();
+	
+		// Iterate over the FFT values
+		integer i := 0;
+		while i < (fftSize / 2) {
+			// Add to the frequencies sequence
+			frequencies.append( (i*sampleSize) / fftSize );
+			
+			// Increment the index
+			i := i + 1;
+		}
+		return frequencies;
+	}
+                                  
+	/** Get the set of amplitude and frequency pairs from
+     *  a previously calculated set of FFT results */	
+	static action getAmplitudesAndFrequencies( integer sampleSize, sequence<ComplexType> fftResult ) returns sequence<AmplitudeFrequency> {
+		// Calculate the magnitude/amplitude values
+		sequence<AmplitudeFrequency> ret := [];
+		integer fftSize := fftResult.size();
+		decimal fftSizeAsDecimal := fftSize.toDecimal();
+
+		// Iterate over the FFT values
+		integer i := 0;
+		while i < (fftSize / 2) {
+			AmplitudeFrequency af := new AmplitudeFrequency;
+			
+			// Calculate the frequency
+			af.frequency := (i*sampleSize) / fftSize;
+			
+			// Calculate the amplitude
+			af.amplitude := 2.0d * ( fftResult[i].abs() / fftSizeAsDecimal );
+
+			// Append the tuple to the sequence
+			ret.append( af );
+			
+			// Increment the index
+			i := i + 1;
+		}
+		return ret;
+	}	
+	
+	/** Get the defined number of highest amplitude and frequency pairs from
+     *  a previously calculated set of FFT results */	
+	static action getTopNAmplitudesAndFrequencies( integer sampleSize, sequence<ComplexType> fftResult, 
+	                                               integer numToRet ) returns sequence<AmplitudeFrequency> {
+		// Calculate the magnitude/amplitude values
+		sequence<AmplitudeFrequency> ret := [];
+		sequence<decimal> amplitudes := getAmplitudes( fftResult );
+		
+		// Sort in descending order of amplitudes
+		sequence<decimal> sortedAmps := amplitudes.clone();
+		sortedAmps.sort();
+		sortedAmps.reverse();
+		sortedAmps.setSize( numToRet ); // Truncate the sequence by the number we want to return
+		
+		integer fftSize := fftResult.size();
+
+		// Iterate over the values to get the associated frequencies
+		decimal currAmplitude;
+		for currAmplitude in sortedAmps {
+			
+			integer i := amplitudes.indexOf( currAmplitude );
+			if( i != -1 ) then {			
+				// Calculate the frequency
+				AmplitudeFrequency af := new AmplitudeFrequency;
+				af.frequency := (i*sampleSize) / fftSize;
+				af.amplitude := currAmplitude;
+				
+				// Append the tuple to the sequence
+				ret.append( af );
+			}
+		}
+
+		return ret;
+	}
+
+	/** Get the frequency with the highest amplitude from
+	 *  a previously calculated set of FFT results */	
+   	static action getLargestFrequency( integer sampleSize, sequence<ComplexType> fftResult ) returns integer {
+   		// Get the amplitudes
+   		sequence<decimal> magnitudes := getAmplitudes( fftResult );
+		
+   		// Find largest peak in power spectrum
+		decimal max_magnitude := -decimal.INFINITY;
+		integer max_index := -1;
+		integer i := 0;
+
+		decimal currVal;
+		for currVal in magnitudes {
+			if( currVal > max_magnitude ) then {
+				max_magnitude := currVal;
+				max_index     := i;
+			}
+			// Increment the index
+			i := i + 1;
+		}
+		
+		// Convert index of largest peak to frequency
+		return (max_index * sampleSize / fftResult.size());
+   	}
+}
