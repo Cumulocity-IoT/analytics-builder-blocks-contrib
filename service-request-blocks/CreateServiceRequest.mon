@@ -160,8 +160,6 @@ event CreateServiceRequest_$Parameters {
                 payload["source"] := {"id": $input_createServiceRequest.properties["source"]};
             }
 
-            payload["status"] := {"id": "1", "name": "New"};
-
             Request srRequest := requestInterface.createRequest("POST", "/service/service-request-mgmt/api/service/request", payload);
 		    srRequest.execute(responseHandler);
 		}
