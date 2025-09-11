@@ -427,6 +427,7 @@ event HTTPOutput {
 			else {
 				throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_tenantOptions_not_found", [<any> (usernamePath+passwordPath)]);
 			}
+			monitor.unsubscribe(FindTenantOptionsResponse.SUBSCRIBE_CHANNEL);
 		}
 	}
 
