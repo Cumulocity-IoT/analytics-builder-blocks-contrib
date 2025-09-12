@@ -1,0 +1,16 @@
+using com.apama.cumulocity.FindTenantOptions;
+using com.apama.cumulocity.FindTenantOptionsResponse;
+using com.apama.cumulocity.TenantOption;
+
+monitor TenantOptionSimulator {
+    action onload() {
+        monitor.subscribe(FindTenantOptions.SEND_CHANNEL);
+        on all FindTenantOptions() as f {
+            log "Simulating tenantoption for " + f.category + "/"+ f.key;
+            FindTenantOptionsResponse response := new FindTenantOptionsResponse;
+            response.options := [TenantOption(f.category, f.key, f.category+"."+f.key)];
+            response.reqId := f.reqId;
+            send response to FindTenantOptionsResponse.SUBSCRIBE_CHANNEL;
+        }
+    }
+}
