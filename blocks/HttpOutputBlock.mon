@@ -1,0 +1,596 @@
+/*
+ * $Copyright (c) 2013 - 2024 Cumulocity GmbH, Duesseldorf, Germany and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Cumulocity GmbH
+ */
+
+package apamax.analyticsbuilder.samples;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.ABConstants;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.NameValue;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+
+using com.apama.cumulocity.Util;
+using com.apama.cumulocity.TenantOption;
+using com.apama.cumulocity.FindTenantOptions;
+using com.apama.cumulocity.FindTenantOptionsResponse;
+using com.apama.util.AnyExtractor;
+
+using com.softwareag.connectivity.httpclient.HttpTransport;
+using com.softwareag.connectivity.httpclient.HttpOptions;
+using com.softwareag.connectivity.httpclient.RequestType;
+using com.softwareag.connectivity.httpclient.Request;
+using com.softwareag.connectivity.httpclient.Response;
+
+
+/**
+* HTTP Response handler for a specific device.
+*/
+event HTTPOutputResponseHandler {
+	/** The device partition. */
+	any devicePartition;
+	/** Callback action for actual handling of the response. */
+	action<any, Response> responseCallback;
+	/** The action which is called when response is received from the HTTP transport. */
+	action onResponse(Response r) {
+		responseCallback(devicePartition, r);
+	}
+}
+
+/**
+* Describes the URL splitted in its components.
+*/
+event SplittedUrl {
+	boolean tls;
+	string host;
+	integer port;
+	string path;
+	string queryParamString;
+}
+
+
+/**
+* Event definition of the parameters for the HTTP Output block.
+*/
+event HTTPOutput_$Parameters {
+
+	/**
+	* Method.
+	*
+	* The method of the request.
+	*/
+	string method;
+
+	/** GET*/
+	constant string method_GET := "GET";
+
+	/** POST*/
+	constant string method_POST := "POST";
+
+	/** PUT*/
+	constant string method_PUT := "PUT";
+
+	/** DELETE*/
+	constant string method_DELETE := "DELETE";
+
+
+
+	/**
+	* URL.
+	*
+	* The URL to request.
+	*/
+	string url;
+
+
+
+	/**
+	* Auth Type.
+	*
+	* The authorization type.
+	*/
+	string auth_type;
+
+	/** No Auth.*/
+	constant string auth_type_no_auth := "No Auth";
+
+	/** Basic Auth .*/
+	constant string auth_type_basic_auth := "Basic Auth";
+
+	/** API-Key as Header.*/
+	constant string auth_type_api_key_header := "API Key as Header";
+
+	/** API-Key as Query Parameter.*/
+	constant string auth_type_api_key_queryParams := "API Key as Query Params";
+
+
+	/**
+	* Username/API-Key Key.
+	*
+	* The username for Basic Auth or API-Key key.
+	*/
+	optional<string> username_apiKey ;
+
+	/**
+	* Password/API-Key Value.
+	*
+	* The password for Basic Auth or API-Key value.
+	*/
+	optional<string> password_apiValue;
+
+
+	/**
+	* Credentials from Tenant Options.
+	*
+	* If selected, block will search in tenant options for the credentials for the authorization.
+	*/
+	boolean credentialsFromTenantOptions;
+
+	/**Default value for credentialsFromTenantOptions.*/
+	constant boolean $DEFAULT_credentialsFromTenantOptions := false;
+
+
+	/**
+	* Headers.
+	*
+	* Additional Headers to add.
+	* @$displayType List of Header Key and Header Value
+	* @$displayHeaderName Header Key
+	* @$displayHeaderValue Header Value
+	*
+	*/
+	optional<sequence<NameValue>> headers;
+
+
+	/** Validate that the values for all the parameters have been provided. */
+	action $validate() {
+		BlockBase.throwsOnEmpty(method, "method", self);
+		BlockBase.throwsOnEmpty(url, "url", self);
+		BlockBase.throwsOnEmpty(auth_type, "auth_type", self);
+		if(auth_type != auth_type_no_auth){
+			ifpresent username_apiKey as username_apiKey {
+				BlockBase.throwsOnEmpty(username_apiKey, "username_apiKey", self);
+			}
+			ifpresent password_apiValue as password_apiValue {
+				BlockBase.throwsOnEmpty(password_apiValue, "password_apiValue", self);
+			}
+		}
+	}
+}
+
+/**
+* HTTPOutput
+*
+* Invokes a REST endpoint.
+*
+*  An example of HTTP request from the block:
+* <code>
+Content-Type: application/json
+
+{
+"name":"name_0",  
+"id":1234653,
+"properties": {  
+"alt":"451",
+"lng":"0.42",
+"lat":"52.35"
+}
+}
+</code>
+*
+* @$blockCategory Output
+*/
+event HTTPOutput {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/**The parameters for the block.*/
+	HTTPOutput_$Parameters $parameters;
+
+	/**
+	* Handle to the connectivity chain that will handle the requests. It is created in the <tt>$init</tt> method and not in the <tt>$validate</tt> method so it only gets created if the model will become active. 
+	* This is just a function of the parameters, so can safely live on this object rather than the <tt>$blockState</tt> object.
+	*/
+	HttpTransport transport;
+
+	/**
+	* Includes additional information to put in the request. It contains additional Headers and Query Parameters.
+	*/
+	HttpOptions options;
+
+	/**
+	* Includes information about all the parts from the URL.
+	*/
+	SplittedUrl splittedUrl;
+
+
+	/** 
+	* Initializes the HTTP transport according to the specified configurations. 
+	* For this the URL gets splitted in its parts. The credentials get fetched from tenant options. And the HTTP Options get set.
+	*/
+	action $init() {
+		splittedUrl := splitUrl($parameters.url);
+
+		dictionary<string, string> config := {};
+		options := new HttpOptions;
+
+		configureTls(config);
+		configureQueryParameters();
+		configureHeaders();
+
+		if($parameters.auth_type = $parameters.auth_type_no_auth){
+			transport := HttpTransport.getOrCreateWithConfigurations(splittedUrl.host, splittedUrl.port, config);
+		}
+		else{
+			ifpresent $parameters.username_apiKey as username_apiKey {
+				ifpresent $parameters.password_apiValue as password_apiValue {
+					if($parameters.credentialsFromTenantOptions){
+						createTransportWithTenantOptions(config,username_apiKey,password_apiValue);
+					}
+					else{
+						configureBasicAuth(config, username_apiKey, password_apiValue);
+						transport := HttpTransport.getOrCreateWithConfigurations(splittedUrl.host, splittedUrl.port, config);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	* This action will split the given URL into all its parts and will return a SplittedUrl including the information.
+	*
+	* The SplittedUrl will contain information about tls, host, port, path and query parameters.
+	*
+	* @param url  The URL to split.
+	*
+	* @return SplittedUrl  The SplittedUrl contains all information.
+	*/
+	action splitUrl(string url) returns SplittedUrl{
+		SplittedUrl splittedUrl := new SplittedUrl;
+		string urlWithoutQueries;
+
+		// Split query paramaters.
+		if(url.contains("?")){
+			sequence<string> splitQueriesSequence := "?".split(url);
+			urlWithoutQueries := splitQueriesSequence.getOr(0,"");
+			splittedUrl.queryParamString := splitQueriesSequence.getOr(1,"");
+		}
+		else{
+			urlWithoutQueries := url;
+			splittedUrl.queryParamString := "";
+		}
+
+		// Split URL in sequence.
+		sequence<string> urlSequence := "/".split(urlWithoutQueries);
+		// Sequence 0 includes http: or https:
+		// Sequence 1 is empty
+		// Sequence 2 includes host and port
+		// Following sequences include the path
+
+		// Check tls status.
+		string tlsCheck := urlSequence.getOr(0, "");
+		if(tlsCheck.contains("https:")){
+			splittedUrl.tls := true;
+			splittedUrl.port := 443;
+		}
+		else{ if(tlsCheck.contains("http:")){
+			splittedUrl.tls := false;
+			splittedUrl.port := 80;
+		}
+		else{
+			throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_unexpected_url_format_tls_check_failed", [<any> url]);
+		}}
+
+		// Check host and port.
+		string hostAndPortCheck := urlSequence.getOr(2,"");
+		if(hostAndPortCheck.contains(":")){
+			sequence<string> hostAndPortSequence := ":".split(hostAndPortCheck);
+			string host := hostAndPortSequence.getOr(0,"");
+			if(host.isEmpty()){
+				throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_unexpected_url_format_host_is_empty", [<any> url]);
+			}
+			splittedUrl.host := host;
+
+			string port := hostAndPortSequence.getOr(1,"");
+			if(port.isEmpty()){
+				throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_unexpected_url_format_port_is_empty", [<any> url]);
+			}
+			splittedUrl.port := port.toInteger();
+		}
+		else{
+			splittedUrl.host := hostAndPortCheck;
+		}
+
+		// Check path and combine all parts together.
+		if(urlSequence.size() > 3){
+			sequence<string> pathSequence := urlSequence;
+			pathSequence.remove(2);
+			pathSequence.remove(1);
+			pathSequence.remove(0);
+			string slash := "/";
+			string path := slash.join(pathSequence);
+
+			splittedUrl.path := "/" + path;
+		}
+		else{
+			splittedUrl.path := "";
+		}
+
+		log "TLS: " + splittedUrl.tls + " Host: "+splittedUrl.host+ " Port: "+splittedUrl.port+" Path: "+splittedUrl.path + " QueryParamString: "+splittedUrl.queryParamString at DEBUG;
+		return splittedUrl;
+	}
+
+	/**
+	* This action will add tls settings with given username and password in the configuration.
+	*
+	* @param config  The config for the transport creation.
+	*/
+	action configureTls(dictionary<string, string> config){
+		string key;
+		if splittedUrl.tls {
+			log "tls Info: " + splittedUrl.tls.toString() at INFO;
+			config.add("tlsAcceptUnrecognizedCertificates", "true");
+			config.add("tls", "true");
+		}
+	}
+
+	/**
+	* This action will add the given query parameters to the options for the request.
+	*/
+	action configureQueryParameters(){
+		if not splittedUrl.queryParamString.isEmpty(){
+			sequence<string> queryParamSequence := "&".split(splittedUrl.queryParamString);
+			string queryParam;
+			for queryParam in queryParamSequence {
+				sequence<string> splittedQueryParam := "=".split(queryParam);
+				string key := splittedQueryParam.getOr(0,"");
+				string value := splittedQueryParam.getOr(1,"");
+				if(key.isEmpty() or value.isEmpty()){
+					throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_unexpected_url_format1", [<any> $parameters.url]);
+				}
+				options.queryParams.add(key, value);
+			}
+		}
+	}
+	
+	/**
+	* This action will add the given headers to the options for the request.
+	*/
+	action configureHeaders(){
+		ifpresent $parameters.headers as headerSequence{
+			NameValue h;
+			for h in headerSequence {
+				options.headers.add(h.name, h.value.valueToString());
+			}
+		}
+	}
+
+	/**
+	* This action will add basic auth settings with given username and password in the configuration.
+	*
+	* @param config  The config for the transport creation.
+	* @param username  Username for basic authentication.
+	* @param password  Password for basic authentication.
+	*/
+	action configureBasicAuth(dictionary<string, string> config, string username, string password){
+		if($parameters.auth_type = $parameters.auth_type_basic_auth){
+			config.add("authenticationType", "HTTP_BASIC");
+			config.add("username", username);
+			config.add("password", password);
+			log "Configured auth with username "+username+" and password:"+password at INFO;
+		}
+		if($parameters.auth_type = $parameters.auth_type_api_key_queryParams){
+			options.queryParams.add(username, password);
+		}
+		if($parameters.auth_type = $parameters.auth_type_api_key_header){
+			options.headers.add(username, password);
+		}
+	}
+
+
+	/**
+	* This action will fetch for the tenant options and create the transport with it.
+	*
+	* @param config  The config for the transport creation.
+	* @param usernamePath  Tenant Options path for username.
+	* @param passwordPath  Tenant Options path for password.
+	*/
+	action createTransportWithTenantOptions(dictionary<string, string> config, string usernamePath, string passwordPath) {
+		FindTenantOptions tenantOptionRequestUsername := prepareTenantOptionRequest(usernamePath);
+		integer reqIdUsername := tenantOptionRequestUsername.reqId;
+		FindTenantOptions tenantOptionRequestPassword := prepareTenantOptionRequest(passwordPath);
+		integer reqIdPassword := tenantOptionRequestPassword.reqId;
+
+		log "Send tenant options request for "+tenantOptionRequestUsername.category +"/"+tenantOptionRequestUsername.key +" reqId: "+reqIdUsername at INFO;
+		log "Send tenant options request for "+tenantOptionRequestPassword.category +"/"+tenantOptionRequestPassword.key +" reqId: "+reqIdPassword at INFO;
+
+		send tenantOptionRequestUsername to FindTenantOptions.SEND_CHANNEL;
+		send tenantOptionRequestPassword to FindTenantOptions.SEND_CHANNEL;
+
+		monitor.subscribe(FindTenantOptionsResponse.SUBSCRIBE_CHANNEL);
+		on FindTenantOptionsResponse(reqId = reqIdUsername) as responseUsername and FindTenantOptionsResponse(reqId = reqIdPassword) as responsePassword {
+			log "Received TenantOptions for " + usernamePath.toString() at INFO;
+			log "Received TenantOptions for " + passwordPath.toString() at INFO;
+			if (responseUsername.options.size() = 1 and responsePassword.options.size() = 1) {
+				TenantOption tenantOptionUsername := responseUsername.options.getOr(0, new TenantOption);
+				TenantOption tenantOptionPassword := responsePassword.options.getOr(0, new TenantOption);
+				configureBasicAuth(config, tenantOptionUsername.value, tenantOptionPassword.value);
+				transport := HttpTransport.getOrCreateWithConfigurations(splittedUrl.host, splittedUrl.port, config);
+			}
+			else {
+				throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_tenantOptions_not_found", [<any> (usernamePath+passwordPath)]);
+			}
+			monitor.unsubscribe(FindTenantOptionsResponse.SUBSCRIBE_CHANNEL);
+		}
+	}
+
+	/**
+	* Prepares the Tenant Option Request for the desired path.
+	*
+	* @param path including category/key of the Tenant Option.
+	*
+	* @return FindTenantOptions including the category and key of the Tenant Option.
+	*/
+	action prepareTenantOptionRequest (string path) returns FindTenantOptions{
+		integer reqId := Util.generateReqId();
+		sequence<string> splittedPath := "/".split(path);
+		FindTenantOptions tenantOptionRequest := new FindTenantOptions;
+		tenantOptionRequest.category := splittedPath.getOr(0, "");
+		tenantOptionRequest.key := splittedPath.getOr(1, "");
+		if(tenantOptionRequest.category.isEmpty() or tenantOptionRequest.key.isEmpty()){
+			throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_path_for_tenantOptions_not_complete", [<any> path]);
+		}
+		tenantOptionRequest.reqId := reqId;
+		return tenantOptionRequest;
+	}
+
+
+
+	/**
+	* This action is called by the framework, it receives the input values and contains the logic of the block.
+	* 
+	* Sends the output using the HTTP protocol.
+	*
+	* @param $activation  The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value  Input value to the block. This will be sent in the body of the request.
+	* @param $input_substituteInfo  Substitute information to substitute the marked parts.
+	* 								This will be used to substitute the marked parts in the Path or Query Parameters.
+	*								The info needs to be in JSON format.
+	* @param $modelScopeParameters  Dictionary containing the information about the model.
+	*
+	* @$inputName value Value
+	* @$inputName substituteInfo Substitute Info
+	*/
+	action $process(Activation $activation, Value $input_value, Value $input_substituteInfo, dictionary<string, any> $modelScopeParameters) {
+		string modelName := $modelScopeParameters.getOrDefault(ABConstants.MODEL_NAME_IDENTIFIER).valueToString();
+		any data := $input_value.properties;
+
+		// Substitute template in path.
+		string path := substituteTemplate(splittedUrl.path, $input_substituteInfo.properties);
+
+		// Substitute template in query parameters.
+		string key;
+		string value;
+		for key in options.queryParams.keys() {
+			value := options.queryParams[key];
+			options.queryParams.remove(key);
+			options.queryParams.add(substituteTemplate(key, $input_substituteInfo.properties), 
+			                        substituteTemplate(value, $input_substituteInfo.properties));
+		}
+
+		// Substitute template in headers.
+		for key in options.headers.keys() {
+			value := options.headers[key];
+			options.headers.remove(key);
+			options.headers.add(substituteTemplate(key, $input_substituteInfo.properties), 
+			                    substituteTemplate(value, $input_substituteInfo.properties));
+		}
+
+		// Create the request event.
+		Request req := transport.createRequest($parameters.method, path, data, options);
+
+		// Execute the request and pass the callback action.
+		req.execute(HTTPOutputResponseHandler($activation.partition, handleResponse).onResponse);
+		$base.profile(BlockBase.PROFILE_OUTPUT);
+	}
+
+	/**
+	* Substitutes all marked parts of a text with the substitution from substituteInfo. The part to substitue is marked by '#{' and closing with '}'
+	*
+	* @param template  The template with marked parts to substitute.
+	* @param substituteInfo  The substitute information including a marker and the value to replace it with.
+	*
+	* @return String  The template with all substituted parts.
+	*/
+	action substituteTemplate(string template, dictionary<string, any> substituteInfo) returns string {
+
+		string result := "";
+		integer start := 0;
+		integer openBraceIndex;
+		integer closeBraceIndex;
+		string placeholder;
+		string replacement;
+		AnyExtractor e := AnyExtractor(substituteInfo);
+
+		while(start < template.length()){
+			openBraceIndex := template.findFrom("#{", start);
+			if(openBraceIndex = -1) {
+				result := result + template.substringFrom(start);
+				return result;
+			}
+			result := result + template.substring(start, openBraceIndex);
+			closeBraceIndex := template.findFrom("}", openBraceIndex);
+			if(closeBraceIndex = -1){
+				result := result + template.substringFrom(openBraceIndex);
+				return result;
+			}
+
+			placeholder := template.substring(openBraceIndex + 2, closeBraceIndex);
+			replacement := e.getStringOr(placeholder, "#{" + placeholder + "}");
+			result := result + replacement;
+
+			start := closeBraceIndex + 1;
+
+		}
+
+		return result;
+	}
+
+
+
+	/** Handle the HTTP response.*/
+	action handleResponse(any devicePartition, Response res) {
+		// Creates a timer to generate output from the block
+		$base.createTimerWith(TimerParams.relative(0.01).withPayload(res).withPartition(devicePartition));
+
+		if not res.isSuccess() {
+			log "Unable to connect " +splittedUrl.host+". Error code: " + res.statusMessage at WARN;
+		}
+	}
+
+	/**
+	* This action is called by the framework when the timer is triggered. The framework provides the value of the payload which was passed while creating the timer.
+	* 
+	* Here it is setting the response output after the timer has been triggered.
+	*/
+	action $timerTriggered(Activation $activation, any $payload) {
+		Response response := <Response> $payload;
+		log "Response Data: " + response.toString() at INFO;
+		dictionary<string, any> propertyValues := {};
+		any k;
+		for k in response.payload.data.getKeys() {
+			propertyValues[k.valueToString()] := response.payload.data.getEntry(k);
+			log "Payload key: " + k.valueToString() + " Payload Entry: " + response.payload.data.getEntry(k) at INFO;
+		}
+		$setOutput_responseBody($activation, Value(true, $activation.timestamp, propertyValues));
+		$setOutput_statusCode($activation, response.statusCode.toFloat());
+	}
+
+	/**
+	* Response body.
+	*
+	* The HTTP response - any JSON properties are available as properties that the PropertyExtractor block can extract.
+	*/
+	action<Activation,Value> $setOutput_responseBody;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+	/** The basic type of the responseBody output. */
+	constant string $OUTPUT_TYPE_responseBody := "pulse";
+
+	/**
+	* Response status code.
+	*
+	* The HTTP response status code.
+	*/
+	action<Activation,float> $setOutput_statusCode;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+	/**To let framework know block is using latest APIs.*/
+	constant integer BLOCK_API_VERSION := 2;
+}
