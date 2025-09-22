@@ -1,0 +1,108 @@
+/* Copyright (c) 2025 Cumulocity GmbH, Düsseldorf, Germany and/or its licensors
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except 
+ * in compliance with the License. You may obtain a copy of the License at 
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, 
+ * software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+ * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language 
+ * governing permissions and limitations under the License.
+ */
+
+package apamax.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.NameValue;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+
+event RollingWindowCounter_$Parameters {
+
+	/**Window Duration (secs).
+	 *
+	 * The amount of time (in seconds) for which values are to be kept in the window.
+	 *
+	 * This must be a finite and positive number.
+	 */
+	float windowDuration;
+
+	/**Limit.
+	 *
+	 * Limit for the counter. If limit is reached, output will be produced and the counter reset.
+	 *
+	 * This must be a finite and positive number.
+	 */
+	optional<float> limit;
+
+}
+
+event RollingWindowCounter_$State {
+    sequence<float> counterWindow;
+
+    action limit(float l) {
+        sequence<float> newWindow := new sequence<float>;
+        float f;
+        for f in counterWindow {
+            if(f >= l) {
+                newWindow.append(f);
+            }
+        }
+        counterWindow := newWindow;
+    }
+
+    action reset() {
+        counterWindow.clear();
+    }
+}
+
+
+/**Rolling Window Counter
+ *
+ * Counts the number of events received within a rolling time window and trigers the output of the limit was reached.
+ * 
+ * @$blockCategory Aggregates
+*/
+event RollingWindowCounter {
+
+	BlockBase $base;
+	RollingWindowCounter_$Parameters $parameters;
+
+	/**
+	 * @param $activation The current activation.
+	 * @param $blockState The current state of the block.
+	 * @param $input_value Input that should be counted.
+	 * @param $input_reset Clears the content of the window.
+	 *
+	 * @$inputName value Value
+	 * 
+	 * @$inputName reset Reset
+	 * 
+	 */
+	action $process(Activation $activation, RollingWindowCounter_$State $blockState, Value $input_value, boolean $input_reset) {
+		if($input_reset) {
+			reset($blockState);
+		}
+        if($activation.timestamp=$input_value.timestamp) {
+			$blockState.limit($activation.timestamp - $parameters.windowDuration);
+            $blockState.counterWindow.append($activation.timestamp);
+			ifpresent $parameters.limit as limit {
+				if($blockState.counterWindow.size().toFloat() >= limit) {
+					$setOutput_trigger($activation, true);
+					reset($blockState);
+				}
+			}
+        }
+	}
+
+	action reset(RollingWindowCounter_$State $blockState) {
+		$blockState.reset();
+	}
+
+    /** Trigger.
+	 * 
+	 * The limit was reached in the current rolling window.
+	*/
+	action<Activation,boolean> $setOutput_trigger;
+	constant string $OUTPUT_TYPE_trigger := "pulse";
+
+    constant string $INPUT_TYPE_reset := "pulse";
+	constant string $INPUT_TYPE_value := "pulse";
+}
