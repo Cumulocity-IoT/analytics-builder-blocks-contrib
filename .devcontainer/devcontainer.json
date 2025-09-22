@@ -4,7 +4,7 @@
 		"dockerfile": "Dockerfile",
 		"args": { 
 			"APAMA_IMAGE": "public.ecr.aws/apama/apama-builder",
-			"APAMA_VERSION": "26.87.0",
+			"APAMA_VERSION": "latest",
 			"APAMA_ANALYTICS_BUILDER_SDK_BRANCH": "main",
 			"APAMA_EPLAPPS_TOOLS_BRANCH": "main"
 		}
