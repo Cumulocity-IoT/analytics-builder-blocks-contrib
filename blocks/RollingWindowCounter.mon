@@ -30,7 +30,7 @@ event RollingWindowCounter_$Parameters {
 	 *
 	 * This must be a finite and positive number.
 	 */
-	optional<float> limit;
+	float limit;
 
 }
 
