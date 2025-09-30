@@ -14,7 +14,7 @@ using apama.analyticsbuilder.NameValue;
 using apama.analyticsbuilder.Activation;
 using apama.analyticsbuilder.Value;
 
-event RollingWindowCounter_$Parameters {
+event RateLimiter_$Parameters {
 
 	/**Window Duration (secs).
 	 *
@@ -34,7 +34,7 @@ event RollingWindowCounter_$Parameters {
 
 }
 
-event RollingWindowCounter_$State {
+event RateLimiter_$State {
     sequence<float> counterWindow;
 
     action limit(float l) {
@@ -54,16 +54,16 @@ event RollingWindowCounter_$State {
 }
 
 
-/**Rolling Window Counter
+/**Rate Limiter
  *
- * Counts the number of events received within a rolling time window and trigers the output of the limit was reached.
+ * Counts the number of events received within a rolling time window and trigers the output if the limit is reached.
  * 
  * @$blockCategory Aggregates
 */
-event RollingWindowCounter {
+event RateLimiter {
 
 	BlockBase $base;
-	RollingWindowCounter_$Parameters $parameters;
+	RateLimiter_$Parameters $parameters;
 
 	/**
 	 * @param $activation The current activation.
@@ -76,24 +76,18 @@ event RollingWindowCounter {
 	 * @$inputName reset Reset
 	 * 
 	 */
-	action $process(Activation $activation, RollingWindowCounter_$State $blockState, Value $input_value, boolean $input_reset) {
+	action $process(Activation $activation, RateLimiter_$State $blockState, Value $input_value, boolean $input_reset) {
 		if($input_reset) {
-			reset($blockState);
+			$blockState.reset();
 		}
         if($activation.timestamp=$input_value.timestamp) {
 			$blockState.limit($activation.timestamp - $parameters.windowDuration);
             $blockState.counterWindow.append($activation.timestamp);
-			ifpresent $parameters.limit as limit {
-				if($blockState.counterWindow.size().toFloat() >= limit) {
-					$setOutput_trigger($activation, true);
-					reset($blockState);
-				}
+			if($blockState.counterWindow.size().toFloat() >= $parameters.limit) {
+				$setOutput_trigger($activation, true);
+				$blockState.reset();
 			}
         }
-	}
-
-	action reset(RollingWindowCounter_$State $blockState) {
-		$blockState.reset();
 	}
 
     /** Trigger.
