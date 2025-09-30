@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<apama-project>
+	<dependency>
+		<dependencyentry path="" kind="src"/>
+	</dependency>
+	<catalogs>
+	</catalogs>
+	<bundles>
+		<bundle file="../../apama-analytics-builder-block-sdk/bundles/CumulocityHelper.bnd" origin-path="" origin="PROJECT_RELATIVE">
+			<instance name=""/>
+			<config-files>
+			</config-files>
+			<bundle-instance-files>
+			</bundle-instance-files>
+			<static-files>
+			</static-files>
+			<dashboard-files>
+			</dashboard-files>
+			<evt-files>
+				<file name="${APAMA_HOME}/monitors/AutomaticOnApplicationInitialized.evt" timestamp="1755816289000"/>
+			</evt-files>
+		</bundle>
+	</bundles>
+</apama-project>
