@@ -62,13 +62,17 @@ class PySysTest(AnalyticsBuilderBaseTest):
 							  self.timestamp(2),
 							  self.timestamp(3),
 							  self.timestamp(4))
+		self.waitForSignal('test-http-server.out', expr='Received GET request')
 		# Simple GET with missing item id = 404
 		self.sendEventStrings(correlator,
 		                      self.inputEvent('value', 1.5, id = self.modelId),
 							  self.inputEvent('substituteInfo', True, id = self.modelId, properties={'id': "2"}),
-							  self.timestamp(5),
-							  self.timestamp(6),
-							  self.timestamp(7))
+							  self.timestamp(5))
+		self.waitForSignal('test-http-server.out', expr='Received GET request')
+
+		self.sendEventStrings(correlator,self.timestamp(6))
+		correlator.flush(10)
+		self.waitForSignal('correlator.log', expr="TEST: Output")
 		
 
 		pass
