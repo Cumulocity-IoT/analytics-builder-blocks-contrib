@@ -1,0 +1,164 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0, 1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Required for creating releases and tags
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    container:
+      image: public.ecr.aws/apama/apama-builder:latest
+      options: --user 0
+
+    env:
+      ANALYTICS_BUILDER_SDK: ${{ github.workspace }}/analytics-builder-block-sdk
+
+    steps:
+      # Step 1: Checkout repositories
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tagging
+
+      - name: Checkout Analytics Builder SDK
+        uses: actions/checkout@v4
+        with:
+          repository: Cumulocity-IoT/apama-analytics-builder-block-sdk
+          path: analytics-builder-block-sdk
+
+      # Step 2: Normalize and validate version
+      - name: Normalize version format
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Add 'v' prefix if not present
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v$VERSION"
+          fi
+          echo "normalized=$VERSION" >> $GITHUB_OUTPUT
+          echo "Normalized version: $VERSION"
+
+      # Step 3: Check if tag already exists
+      - name: Check for existing tag
+        run: |
+          if git rev-parse "${{ steps.version.outputs.normalized }}" >/dev/null 2>&1; then
+            echo "Error: Tag ${{ steps.version.outputs.normalized }} already exists"
+            exit 1
+          fi
+
+      # Step 4: Run tests before building
+      - name: Run PySys tests
+        run: |
+          cd tests
+          pysys run
+
+      # Step 5: Create artifacts directory
+      - name: Prepare artifacts directory
+        run: mkdir -p release-artifacts
+
+      # Step 6: Build all extension bundles
+      - name: Build contrib-blocks bundle
+        run: |
+          ./analytics-builder-block-sdk/analytics_builder build extension \
+            --input blocks/ \
+            --output release-artifacts/contrib-blocks-${{ steps.version.outputs.normalized }}.zip
+          echo "Built: contrib-blocks-${{ steps.version.outputs.normalized }}.zip"
+
+      - name: Build contrib-cumulocity-blocks bundle
+        run: |
+          ./analytics-builder-block-sdk/analytics_builder build extension \
+            --input cumulocity-blocks/ \
+            --output release-artifacts/contrib-cumulocity-blocks-${{ steps.version.outputs.normalized }}.zip
+          echo "Built: contrib-cumulocity-blocks-${{ steps.version.outputs.normalized }}.zip"
+
+      - name: Build contrib-service-request-blocks bundle
+        run: |
+          ./analytics-builder-block-sdk/analytics_builder build extension \
+            --input service-request-blocks/ \
+            --output release-artifacts/contrib-service-request-blocks-${{ steps.version.outputs.normalized }}.zip
+          echo "Built: contrib-service-request-blocks-${{ steps.version.outputs.normalized }}.zip"
+
+      - name: Build contrib-simulation-blocks bundle
+        run: |
+          ./analytics-builder-block-sdk/analytics_builder build extension \
+            --input simulation-blocks/ \
+            --output release-artifacts/contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip
+          echo "Built: contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip"
+
+      # Step 7: Verify all artifacts were created
+      - name: Verify build artifacts
+        run: |
+          echo "=== Release Artifacts ==="
+          ls -lh release-artifacts/
+          echo ""
+
+          # Check all 4 bundles exist
+          for bundle in contrib-blocks contrib-cumulocity-blocks contrib-service-request-blocks contrib-simulation-blocks; do
+            if [ ! -f "release-artifacts/${bundle}-${{ steps.version.outputs.normalized }}.zip" ]; then
+              echo "Error: Missing artifact ${bundle}-${{ steps.version.outputs.normalized }}.zip"
+              exit 1
+            fi
+          done
+          echo "✓ All 4 bundles built successfully"
+
+      # Step 8: Create git tag
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a ${{ steps.version.outputs.normalized }} -m "Release ${{ steps.version.outputs.normalized }}"
+          git push origin ${{ steps.version.outputs.normalized }}
+
+      # Step 9: Create GitHub release and upload artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.normalized }}
+          name: Release ${{ steps.version.outputs.normalized }}
+          body: |
+            ## Analytics Builder Blocks Contribution - Release ${{ steps.version.outputs.normalized }}
+
+            This release includes 4 extension bundles:
+            - **contrib-blocks** - 30 general-purpose blocks (CSV, HTTP, Math, Logic, etc.)
+            - **contrib-cumulocity-blocks** - 8 Cumulocity-specific blocks
+            - **contrib-service-request-blocks** - 1 service request integration block
+            - **contrib-simulation-blocks** - 8 simulation and data generation blocks
+
+            ### Installation
+
+            Download the desired bundle(s) and install to your Cumulocity tenant using:
+
+            ```bash
+            . /opt/cumulocity/Apama/bin/apama_env
+
+            ./analytics_builder build extension \
+              --input <downloaded-bundle.zip> \
+              --cumulocity_url https://$TENANT/ \
+              --username $USERNAME \
+              --password $PASSWORD \
+              --restart
+            ```
+
+            ### Requirements
+            - Cumulocity IoT tenant with apama-ctrl microservice
+            - Analytics Builder Block SDK
+
+            ### Full Changelog
+            See commit history for detailed changes since the last release.
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.normalized, 'alpha') || contains(steps.version.outputs.normalized, 'beta') || contains(steps.version.outputs.normalized, 'rc') }}
+          files: |
+            release-artifacts/contrib-blocks-${{ steps.version.outputs.normalized }}.zip
+            release-artifacts/contrib-cumulocity-blocks-${{ steps.version.outputs.normalized }}.zip
+            release-artifacts/contrib-service-request-blocks-${{ steps.version.outputs.normalized }}.zip
+            release-artifacts/contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
