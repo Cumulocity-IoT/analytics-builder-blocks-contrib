@@ -12,7 +12,7 @@ permissions:
   contents: write  # Required for creating releases and tags
 
 jobs:
-  create-release:
+  build:
     runs-on: ubuntu-latest
     container:
       image: public.ecr.aws/apama/apama-builder:latest
@@ -21,12 +21,13 @@ jobs:
     env:
       ANALYTICS_BUILDER_SDK: ${{ github.workspace }}/analytics-builder-block-sdk
 
+    outputs:
+      version: ${{ steps.version.outputs.normalized }}
+
     steps:
       # Step 1: Checkout repositories
       - name: Checkout this repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for tagging
 
       - name: Checkout Analytics Builder SDK
         uses: actions/checkout@v4
@@ -46,25 +47,17 @@ jobs:
           echo "normalized=$VERSION" >> $GITHUB_OUTPUT
           echo "Normalized version: $VERSION"
 
-      # Step 3: Check if tag already exists
-      - name: Check for existing tag
-        run: |
-          if git rev-parse "${{ steps.version.outputs.normalized }}" >/dev/null 2>&1; then
-            echo "Error: Tag ${{ steps.version.outputs.normalized }} already exists"
-            exit 1
-          fi
-
-      # Step 4: Run tests before building
+      # Step 3: Run tests before building
       - name: Run PySys tests
         run: |
           cd tests
           pysys run
 
-      # Step 5: Create artifacts directory
+      # Step 4: Create artifacts directory
       - name: Prepare artifacts directory
         run: mkdir -p release-artifacts
 
-      # Step 6: Build all extension bundles
+      # Step 5: Build all extension bundles
       - name: Build contrib-blocks bundle
         run: |
           ./analytics-builder-block-sdk/analytics_builder build extension \
@@ -93,7 +86,7 @@ jobs:
             --output release-artifacts/contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip
           echo "Built: contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip"
 
-      # Step 7: Verify all artifacts were created
+      # Step 6: Verify all artifacts were created
       - name: Verify build artifacts
         run: |
           echo "=== Release Artifacts ==="
@@ -109,28 +102,56 @@ jobs:
           done
           echo "✓ All 4 bundles built successfully"
 
-      # Step 8: Create git tag
+      # Step 7: Upload artifacts for release job
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundles
+          path: release-artifacts/*.zip
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository for git operations
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tagging
+
+      # Step 2: Check if tag already exists
+      - name: Check for existing tag
+        run: |
+          if git rev-parse "${{ needs.build.outputs.version }}" >/dev/null 2>&1; then
+            echo "Error: Tag ${{ needs.build.outputs.version }} already exists"
+            exit 1
+          fi
+
+      # Step 3: Create and push git tag
       - name: Create and push git tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a ${{ steps.version.outputs.normalized }} -m "Release ${{ steps.version.outputs.normalized }}"
-          git push origin ${{ steps.version.outputs.normalized }}
+          git tag -a ${{ needs.build.outputs.version }} -m "Release ${{ needs.build.outputs.version }}"
+          git push origin ${{ needs.build.outputs.version }}
 
-      # Step 9: Create GitHub release and upload artifacts
+      # Step 4: Download build artifacts
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundles
+          path: release-artifacts
+
+      # Step 5: Create GitHub release and upload artifacts
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.normalized }}
-          name: Release ${{ steps.version.outputs.normalized }}
+          tag_name: ${{ needs.build.outputs.version }}
+          name: Release ${{ needs.build.outputs.version }}
           body: |
-            ## Analytics Builder Blocks Contribution - Release ${{ steps.version.outputs.normalized }}
-
-            This release includes 4 extension bundles:
-            - **contrib-blocks** - 30 general-purpose blocks (CSV, HTTP, Math, Logic, etc.)
-            - **contrib-cumulocity-blocks** - 8 Cumulocity-specific blocks
-            - **contrib-service-request-blocks** - 1 service request integration block
-            - **contrib-simulation-blocks** - 8 simulation and data generation blocks
+            ## Analytics Builder Blocks Contribution - Release ${{ needs.build.outputs.version }}
 
             ### Installation
 
@@ -154,11 +175,7 @@ jobs:
             ### Full Changelog
             See commit history for detailed changes since the last release.
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.normalized, 'alpha') || contains(steps.version.outputs.normalized, 'beta') || contains(steps.version.outputs.normalized, 'rc') }}
-          files: |
-            release-artifacts/contrib-blocks-${{ steps.version.outputs.normalized }}.zip
-            release-artifacts/contrib-cumulocity-blocks-${{ steps.version.outputs.normalized }}.zip
-            release-artifacts/contrib-service-request-blocks-${{ steps.version.outputs.normalized }}.zip
-            release-artifacts/contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip
+          prerelease: ${{ contains(needs.build.outputs.version, 'alpha') || contains(needs.build.outputs.version, 'beta') || contains(needs.build.outputs.version, 'rc') }}
+          files: release-artifacts/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
