@@ -61,11 +61,12 @@ class PySysTest(AnalyticsBuilderBaseTest):
 							  self.timestamp(1),
 		                      self.inputEvent('value', True, id = self.modelId, properties={'test': "something"}),
 							  self.inputEvent('substituteInfo', True, id = self.modelId, properties={'id': "1"}),
-							  self.timestamp(2),
-							  self.timestamp(3),
-							  self.timestamp(4))
+							  self.timestamp(2))
 
 		self.waitForSignal('test-http-server.out', expr='Received PUT request')
+		self.sendEventStrings(correlator,self.timestamp(3))
+		correlator.flush(10)
+		self.waitForSignal('correlator.log', expr="TEST: Output")
 		pass
 
 	def validate(self):

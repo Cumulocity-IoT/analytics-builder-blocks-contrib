@@ -1,0 +1,38 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    container:
+      image: public.ecr.aws/apama/apama-builder:latest
+      options: --user 0
+
+    env:
+      ANALYTICS_BUILDER_SDK: ${{ github.workspace }}/analytics-builder-block-sdk
+
+    steps:
+      # Step 1: Check out the current repository
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      # Step 2: Check out the second repository
+      - name: Checkout second repository
+        uses: actions/checkout@v4
+        with:
+          repository: Cumulocity-IoT/apama-analytics-builder-block-sdk
+          path: analytics-builder-block-sdk
+
+      # Step 3: Run the command in the tests/ directory of the first repo
+      - name: Run PySys tests
+        run: |
+          cd tests
+          pysys run
