@@ -86,7 +86,43 @@ jobs:
             --output release-artifacts/contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip
           echo "Built: contrib-simulation-blocks-${{ steps.version.outputs.normalized }}.zip"
 
-      # Step 6: Verify all artifacts were created
+      # Step 6: Build individual blocks
+      - name: Build individual blocks
+        run: |
+          echo "Building individual blocks..."
+          BLOCK_COUNT=0
+
+          # Build individual blocks from each directory
+          for dir in blocks cumulocity-blocks service-request-blocks simulation-blocks; do
+            if [ -d "$dir" ]; then
+              for block_file in "$dir"/*.mon; do
+                if [ -f "$block_file" ]; then
+                  block_name=$(basename "$block_file" .mon)
+
+                  # Create temp directory for single block
+                  temp_dir="temp-${block_name}"
+                  mkdir -p "$temp_dir"
+                  cp "$block_file" "$temp_dir/"
+
+                  # Build individual block zip
+                  ./analytics-builder-block-sdk/analytics_builder build extension \
+                    --input "$temp_dir/" \
+                    --output "release-artifacts/${block_name}-${{ steps.version.outputs.normalized }}.zip"
+
+                  # Clean up temp directory
+                  rm -rf "$temp_dir"
+
+                  BLOCK_COUNT=$((BLOCK_COUNT + 1))
+                  echo "  Built: ${block_name}"
+                fi
+              done
+            fi
+          done
+
+          echo ""
+          echo "Built $BLOCK_COUNT individual blocks"
+      
+      # Step 7: Validate Build
       - name: Verify build artifacts
         run: |
           echo "=== Release Artifacts ==="
@@ -100,9 +136,34 @@ jobs:
               exit 1
             fi
           done
-          echo "✓ All 4 bundles built successfully"
 
-      # Step 7: Upload artifacts for release job
+          # Check count of individual blocks
+          BLOCK_COUNT=0
+          for dir in blocks cumulocity-blocks service-request-blocks simulation-blocks; do
+            if [ -d "$dir" ]; then
+              for block_file in "$dir"/*.mon; do
+                if [ -f "$block_file" ]; then
+                  BLOCK_COUNT=$((BLOCK_COUNT + 1))
+                fi
+              done
+            fi
+          done
+
+          ZIP_COUNT=$(ls release-artifacts/*.zip | wc -l)
+          EXPECTED_ZIP_COUNT=$((BLOCK_COUNT + 4))
+
+          echo "Block count: $BLOCK_COUNT"
+          echo "Expected ZIP count: $EXPECTED_ZIP_COUNT (blocks + 4 bundles)"
+          echo "Actual ZIP count: $ZIP_COUNT"
+
+          if [ $ZIP_COUNT -ne $EXPECTED_ZIP_COUNT ]; then
+            echo ""
+            echo "Error: Mismatch in block count"
+            exit 1
+          fi
+
+          echo "All artifacts validated successfully"    
+      # Step 8: Upload artifacts for release job
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
