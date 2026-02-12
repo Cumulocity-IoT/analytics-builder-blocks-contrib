@@ -1,0 +1,85 @@
+//*****************************************************************************
+// Title:         ComplexType
+//
+// Copyright (c) 2015-2017 Software AG, Darmstadt, Germany and/or its licensors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//*****************************************************************************
+
+package com.industry.analytics;
+
+/** 
+ *  This event provides functionality to support complex number 
+ *  (numbers with real and imaginary components) arithmetic.
+ *  This is currently used by the Fast Fourier Transformation 
+ *  calculations.
+ */
+event ComplexType {
+	decimal real;
+	decimal imaginary;
+	
+	static action init( decimal r, decimal i ) returns ComplexType {
+		ComplexType ret := new ComplexType;
+		ret.real      := r;
+		ret.imaginary := i;
+		return ret;
+    }
+	
+	static action initFromSequence( sequence<decimal> input ) returns sequence<ComplexType> {
+        sequence<ComplexType> cOutput := [];
+       
+        decimal currIn;
+        for currIn in input {
+        	cOutput.append( ComplexType.init( currIn, 0.0d ) );
+        }
+		return cOutput;
+    }
+	
+    action cexp() returns ComplexType {
+    	decimal ex := self.real.exp();  
+      	return ComplexType( ex * self.imaginary.cos(), ex * self.imaginary.sin() );
+    }
+	
+	action add( ComplexType b ) returns ComplexType {
+		return ComplexType( self.real + b.real, self.imaginary + b.imaginary );
+	}
+
+	action subtract( ComplexType b ) returns ComplexType {
+		return ComplexType( self.real - b.real, self.imaginary - b.imaginary );
+	}
+
+	action multiply( ComplexType b ) returns ComplexType {
+		return ComplexType( self.real * b.real - self.imaginary * b.imaginary,
+		                    self.real * b.imaginary + self.imaginary * b.real);
+	}
+	
+	action abs() returns decimal {
+		return ( ( self.real * self.real ) + ( self.imaginary * self.imaginary ) ).sqrt();
+	}
+
+	action power() returns decimal {
+		return ( ( self.real * self.real ) + ( self.imaginary * self.imaginary ) );
+	}
+
+	action _toSimpleString() returns string {
+		return "("+real.toString()+","+imaginary.toString()+")";
+	}
+	action _toString() returns string {
+		if( imaginary >= 0.0d ) then {
+			return real.toString()+" +"+imaginary.toString()+"i";
+		} else {
+			return real.toString()+" "+imaginary.toString()+"i";
+		}
+	}
+}
