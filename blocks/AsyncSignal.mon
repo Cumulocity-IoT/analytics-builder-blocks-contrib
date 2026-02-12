@@ -184,7 +184,7 @@ event ReceiveAsyncSignal {
         monitor.subscribe($base.getTenantDetails().getChannel(AsyncSignal.CHANNEL));
 		string filter := "";
 		if($parameters.scopeToModel) {
-			filter := $base.modelId;
+			filter := $base.getModelId();
 		}
 
 		on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
