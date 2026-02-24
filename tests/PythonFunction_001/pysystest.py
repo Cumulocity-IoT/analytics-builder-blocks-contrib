@@ -49,7 +49,7 @@ def onInput(inputs, context):
 
 	def validate(self):
 		# Verifying that there are no errors in log file.
-		self.checkLogs(errorIgnores=['Unknown dynamicChain', 'CumulocityRestAPIMonitor', 'CumulocityRequestInterface', 'Notifications2Subscriber', 'InvalidParameterException - Python function must be provided and cannot be the default placeholder'], warnIgnores=['Python path element does not exist', 'InvalidParameterException is not localized'])
+		self.checkLogs(errorIgnores=['InvalidParameterException - Python function must be provided and cannot be the default placeholder'], warnIgnores=['Python path element does not exist', 'InvalidParameterException is not localized'])
 		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='InvalidParameterException - Python function must be provided and cannot be the default placeholder')
 		
 		# Verifying that the model is deployed successfully.
