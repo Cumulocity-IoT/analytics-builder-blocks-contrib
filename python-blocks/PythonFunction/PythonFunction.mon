@@ -22,31 +22,31 @@ event PythonFunction_$Parameters
 	  */
 	optional<string> label;
 	/**
-	  * param1.
+	  * params[0].
 	  *
 	  * An arbitrary parameter that can be templated into the Python code.
 	  */
 	optional<string> param1;
 	/**
-	  * param2.
+	  * params[1].
 	  *
 	  * An arbitrary parameter that can be templated into the Python code.
 	  */
 	optional<string> param2;
 	/**
-	  * param3.
+	  * params[2].
 	  *
 	  * An arbitrary parameter that can be templated into the Python code.
 	  */
 	optional<string> param3;
 	/**
-	  * param4.
+	  * params[3].
 	  *
 	  * An arbitrary parameter that can be templated into the Python code.
 	  */
 	optional<string> param4;
 	/**
-	  * param5.
+	  * params[4].
 	  *
 	  * An arbitrary parameter that can be templated into the Python code.
 	  */
