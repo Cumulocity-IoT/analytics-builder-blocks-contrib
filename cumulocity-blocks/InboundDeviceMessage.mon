@@ -38,7 +38,7 @@ event DeviceInput_$Parameters
 
   The output is a base64-encoded string of the device payload. The properties contain the following keys: topic, clientID, transportProperties and transport.
 
-  @$isPreviewBlock
+  @$isPreviewBlock true
   @$blockCategory Input
 */
 event DeviceInput

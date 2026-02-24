@@ -6,6 +6,12 @@ from pysys.constants import *
 from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
+
+	def _injectCumulocitySupport(self, corr):
+		AnalyticsBuilderBaseTest._injectCumulocitySupport(self, corr)
+		self._injectEPLOnce(corr, [self.project.APAMA_HOME+'/monitors/'+i+'.mon' for i in ['Base64']])  
+		self._injectEPLOnce(corr, [self.project.testRootDir+'/utils/DeviceServiceMock.mon'])
+
 	def execute(self):
 		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/cumulocity-blocks/')
 		modelId = self.createTestModel('apamax.analyticsbuilder.customblocks.SumLast')
