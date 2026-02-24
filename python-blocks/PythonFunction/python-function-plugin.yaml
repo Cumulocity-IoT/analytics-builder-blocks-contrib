@@ -1,0 +1,12 @@
+eplPlugins:
+  PythonBlockPlugin:
+    pythonFile: "${PARENT_DIR}/pythonBlockPlugin.py"
+    class: PythonBlockPlugin
+    isolation: "${streaminganalytics.pythonBlockIsolation}"
+    pythonPath:
+      - "${PARENT_DIR}/venv/lib/python3.9/site-packages"
+      - "${PARENT_DIR}/requirements"
+    config:
+      requirementsDir: "${PARENT_DIR}/requirements"
+      requirements: "${streaminganalytics.pythonBlockRequirements}"
+      packages: "${streaminganalytics.pythonBlockPackages}"
