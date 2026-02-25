@@ -1,10 +1,5 @@
 package apamax.analyticskit.blocks.cumulocity;
 using apama.analyticsbuilder.BlockBase;
-using com.apama.cumulocity.TenantDetails;
-using com.softwareag.connectivity.ExtraFieldsDict;
-using com.softwareag.connectivity.Chain;
-using com.softwareag.connectivity.ConnectivityPlugins;
-using com.apama.exceptions.Exception;
 using com.apama.cumulocity.devices.DeviceService;
 using com.apama.cumulocity.devices.DeviceConsumer;
 using com.apama.cumulocity.devices.DeviceMessage;
@@ -16,12 +11,16 @@ using apama.analyticsbuilder.Activation;
 /** DeviceInput parameters. */
 event DeviceInput_$Parameters
 {
-	/** The transport to subscribe to.
+	/** Transport name.
+
+	  The transport to subscribe to.
 
 	  For example, "mqtt" for MQTT Service.
 	*/
 	string transport;
-	/** The topic on the transport to subscribe to.
+	/** Topic name.
+
+	  The topic on the transport to subscribe to.
 
 	  This does not accept wild cards.
 	*/
