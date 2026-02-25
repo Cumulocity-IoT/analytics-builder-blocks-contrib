@@ -27,13 +27,13 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		
 		self.sendEventStrings(self.correlator, self.timestamp(1))
 		# correct (first client)
-		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientFoo","topicName",{},any(string,"SGVsbG8gV29ybGQ="))', channel="devicesubscribechannel0")
+		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientFoo","topicName",{},any(string,"SGVsbG8gV29ybGQ="),1.0)', channel="devicesubscribechannel0")
 		# wrong transport
-		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("badTransport","clientFoo","topicName",{},any(string,"SGVsbG8gV29ybGQ="))', channel="devicesubscribechannel0")
+		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("badTransport","clientFoo","topicName",{},any(string,"SGVsbG8gV29ybGQ="),1.0)', channel="devicesubscribechannel0")
 		# wrong topic
-		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientFoo","badTopic",{},any(string,"SGVsbG8gV29ybGQ="))', channel="devicesubscribechannel0")
+		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientFoo","badTopic",{},any(string,"SGVsbG8gV29ybGQ="),1.0)', channel="devicesubscribechannel0")
 		# correct (second client)
-		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientBar","topicName",{},any(string,"SGVsbG8gV29ybGQ="))', channel="devicesubscribechannel1")
+		self.correlator.sendEventStrings('com.apama.cumulocity.devices.DeviceMessage("mqtt","clientBar","topicName",{},any(string,"SGVsbG8gV29ybGQ="),1.0)', channel="devicesubscribechannel1")
 		self.sendEventStrings(self.correlator, self.timestamp(2))
 
 	def validate(self):

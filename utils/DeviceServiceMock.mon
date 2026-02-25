@@ -11,6 +11,7 @@ event DeviceMessage
 	string topic;
 	dictionary<string, any> transportProperties;
 	any payloadBase64;
+	float time;
 }
 
 event DeviceConsumer
