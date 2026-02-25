@@ -69,7 +69,7 @@ event DeviceInput
 			"transportProperties": e.transportProperties,
 			"transport": $parameters.transport
 		};
-		v.timestamp := $activation.timestamp;
+		v.timestamp := e.time/1000.0;
 		$setOutput_value($activation, v);
 	}
 
