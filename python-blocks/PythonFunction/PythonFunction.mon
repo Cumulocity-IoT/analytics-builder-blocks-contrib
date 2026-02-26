@@ -1,0 +1,269 @@
+/*
+ * Copyright (c) 2013-present Cumulocity GmbH, Duesseldorf, Germany and/or its affiliates and/or their licensors.
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Cumulocity GmbH
+ */
+ 
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+
+/**
+ * Parameters for Python function block.
+ */
+event PythonFunction_$Parameters
+{
+	import "PythonBlockPlugin" as plugin;
+	/**
+	  * Label.
+	  *
+	  * An arbitrary label for the block instance.
+	  */
+	optional<string> label;
+	/**
+	  * params[0].
+	  *
+	  * An arbitrary parameter that can be templated into the Python code.
+	  */
+	optional<string> param1;
+	/**
+	  * params[1].
+	  *
+	  * An arbitrary parameter that can be templated into the Python code.
+	  */
+	optional<string> param2;
+	/**
+	  * params[2].
+	  *
+	  * An arbitrary parameter that can be templated into the Python code.
+	  */
+	optional<string> param3;
+	/**
+	  * params[3].
+	  *
+	  * An arbitrary parameter that can be templated into the Python code.
+	  */
+	optional<string> param4;
+	/**
+	  * params[4].
+	  *
+	  * An arbitrary parameter that can be templated into the Python code.
+	  */
+	optional<string> param5;
+
+	/**
+	 * Python function.
+	 *
+	 * The python code must define a function onInput that takes inputs and context as arguments and returns a list of outputs.
+	 *
+	 * @$semanticType pab_codeEditor_python
+	 */
+	string pythonFunction;
+
+	constant string $DEFAULT_pythonFunction := "def onInput(inputs, context):\n    return None\n";
+	/** 
+	 * This action is called by the framework to validate the parameters of the block. 
+	 */
+	action $validate() {
+		if pythonFunction = $DEFAULT_pythonFunction {
+			throw com.apama.exceptions.Exception("Python function must be provided and cannot be the default placeholder.", "InvalidParameterException");
+		}
+		plugin.validate(pythonFunction);
+	}
+}
+
+/**
+ * State for the Python block.
+ */
+event PythonFunction_$State
+{
+	chunk python_state;
+}
+
+/**
+ * Python function.
+ *
+ * Executes python code on the inputs and produces an output.
+ *
+ * Python code must define a function onInput that takes inputs and context as an argument and returns a list of outputs.
+ *
+ * The inputs are a list of ten Value objects, with members value, properties and timestamp corresponding to the block inputs.
+ *
+ * The context contains the following members/functions:
+ <ul>
+ <li>logger - A logger object that can be used to log messages.</li>
+ <li>getState(key, default=None) - A function that can be used to get state between activations of the block.</li>
+ <li>setState(key, value) - A function that can be used to set state between activations of the block.</li>
+ <li>hasState(key) - A function that can be used to check if a state key exists.</li>
+ <li>params - A list containing the block parameters (eg <tt>context.params[0])</tt>.</li>
+ </ul>
+
+ The return value of the function is a list of up to ten values corresponding to the block outputs. These can either be bare values, or Value objects, with members value, properties and timestamp. If the function does not generate a value, return None instead.
+ 
+ For example:
+<pre>
+import math<br/>
+def onInput(inputs, context):<br/>
+&nbsp;&nbsp;context.setState("counter", context.getState("counter", 0.) + 1.)<br/>
+&nbsp;&nbsp;(a, b) = (inputs[0].value, inputs[1].value)<br/>
+&nbsp;&nbsp;if a and b:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;return [<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;math.fabs(a - b),<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a - b,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;context.getState("counter"),<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Value(True, {'value1': inputs[0].properties['value1'], 'value2': inputs[1].properties['value2']}),<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;]<br/>
+&nbsp;&nbsp;else:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;return None<br/>
+</pre>
+ *
+ * There is a safe default set of built-in libraries which can be imported. Additional libraries can be installed and made available using the streaminganalytics.pythonBlockRequirements tenant option to provide a requirements.txt file and the streaminganalytics.pythonBlockPackages to give a space-separated list of permitted imports.
+ *
+ * If your imports do not support being loaded multiple times in different sub-interpreters, you can set the streaminganalytics.pythonBlockIsolation tenant option to 'none'.
+ *
+ * @$blockCategory Calculations
+ * @$derivedName $label
+ * @$isPreviewBlock true
+ */
+event PythonFunction 
+{
+	import "PythonBlockPlugin" as plugin;
+	
+	/**BlockBase object.
+	 *
+	 * This is initialized by the framework when the block is required for a model.
+	 */
+	BlockBase $base;
+	
+	/** Block parameters, filled in by the framework. */
+	PythonFunction_$Parameters $parameters;
+
+	/** Setup the return vector */
+	action $init()
+	{
+		setOutput := [$setOutput_result1, $setOutput_result2, $setOutput_result3, $setOutput_result4, $setOutput_result5, $setOutput_result6, $setOutput_result7, $setOutput_result8, $setOutput_result9, $setOutput_result10];
+		compiled_function := plugin.validate($parameters.pythonFunction);
+	}
+
+	/**
+	 * This action receives the input values and contains the logic of the block. 
+	 *
+	 * @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	 * @param $input_value1 First input to the block.
+	 * @param $input_value2 Second input to the block.
+	 * @param $input_value3 Third input to the block.
+	 * @param $input_value4 Fourth input to the block.
+	 * @param $input_value5 Fifth input to the block.
+	 * @param $input_value6 Sixth input to the block.
+	 * @param $input_value7 Seventh input to the block.
+	 * @param $input_value8 Eigth input to the block.
+	 * @param $input_value9 Ninth input to the block.
+	 * @param $input_value10 Tenth input to the block.
+	 *
+	 * @$inputName value1 inputs[0]
+	 * @$inputName value2 inputs[1]
+	 * @$inputName value3 inputs[2]
+	 * @$inputName value4 inputs[3]
+	 * @$inputName value5 inputs[4]
+	 * @$inputName value6 inputs[5]
+	 * @$inputName value7 inputs[6]
+	 * @$inputName value8 inputs[7]
+	 * @$inputName value9 inputs[8]
+	 * @$inputName value10 inputs[9]
+	 */
+	action $process(Activation $activation, Value $input_value1, Value $input_value2, Value $input_value3, Value $input_value4, Value $input_value5, Value $input_value6, Value $input_value7, Value $input_value8, Value $input_value9, Value $input_value10, PythonFunction_$State $blockState)
+	{
+		if $blockState.python_state.empty() {
+			// If the python state is not initialized, we initialize it.
+			$blockState.python_state := plugin.createPythonState();
+		}
+		sequence<Value> results := plugin.execute(compiled_function, $blockState.python_state, $parameters, [$input_value1, $input_value2, $input_value3, $input_value4, $input_value5, $input_value6, $input_value7, $input_value8, $input_value9, $input_value10]);
+
+		if results.size()>0 {
+			integer i := 0;
+			while i < results.size() and i < setOutput.size() {
+				setOutput[i]($activation, results[i]);
+				i := i + 1;
+			}
+		}
+	}
+	
+	/**
+	 * outputs[0]
+	 *
+	 * This is the first output of the block.
+	 */
+	action<Activation,Value> $setOutput_result1;		// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+	
+	/**
+	 * outputs[1]
+	 *
+	 * This is the second output of the block.
+	 */
+	action<Activation,Value> $setOutput_result2;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+	
+	/**
+	 * outputs[2]
+	 *
+	 * This is the third output of the block.
+	 */
+	action<Activation,Value> $setOutput_result3;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+	
+	/**
+	 * outputs[3]
+	 *
+	 * This is the fourth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result4;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+	/**
+	 * outputs[4]
+	 *
+	 * This is the fifth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result5;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+	/**
+	 * outputs[5]
+	 *
+	 * This is the sixth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result6;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+
+	/**
+	 * outputs[6]
+	 *
+	 * This is the seventh output of the block.
+	 */
+	action<Activation,Value> $setOutput_result7;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+
+	/**
+	 * outputs[7]
+	 *
+	 * This is the eigth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result8;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+
+	/**
+	 * outputs[8]
+	 *
+	 * This is the ninth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result9;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+
+	/**
+	 * outputs[9]
+	 *
+	 * This is the tenth output of the block.
+	 */
+	action<Activation,Value> $setOutput_result10;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+	sequence<action<Activation,Value>> setOutput;
+	chunk compiled_function;
+}
