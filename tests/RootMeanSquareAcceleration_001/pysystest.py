@@ -1,7 +1,3 @@
-#
-#  $Copyright (c) 2019 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
-#   This file is licensed under the Apache 2.0 license - see https://www.apache.org/licenses/LICENSE-2.0
-#
 __pysys_title__   = r""" RootMeanSquareAcceleration block - touch test. """
 #                        ================================================================================
 __pysys_purpose__ = r""" RootMeanSquareAcceleration block - touch test. """
