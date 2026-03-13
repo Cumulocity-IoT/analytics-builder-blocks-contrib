@@ -1,0 +1,28 @@
+__pysys_title__   = r""" RootMeanSquareAcceleration block - touch test. """
+#                        ================================================================================
+__pysys_purpose__ = r""" RootMeanSquareAcceleration block - touch test. """
+
+from pysys.constants import *
+from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
+
+class PySysTest(AnalyticsBuilderBaseTest):
+	def execute(self):
+		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
+		
+		# engine_receive process listening on all the channels.
+		correlator.receive('all.evt')
+		
+		# Deploying a new model with correct parameter.
+		self.modelId = self.createTestModel('apamax.analyticsbuilder.custom.RootMeanSquareAcceleration',{'frequencyL':20.0,'frequencyH':30.0,'ASDL':1.0,'ASDH':1.1})
+		
+		self.sendEventStrings(correlator,
+		                      self.timestamp(2)
+							  )
+
+	def validate(self):
+		# Verifying that the model is deployed successfully.
+		self.assertGrep(self.analyticsBuilderCorrelator.logfile, expr='Model \"' + self.modelId + '\" with PRODUCTION mode has started')
+		self.assertGrep('output.evt', expr=self.outputExpr('Grms',3.2443445876655126,self.modelId,'.*','.9',{}))
+		
+			
+		
