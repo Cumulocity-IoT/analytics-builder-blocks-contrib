@@ -1,0 +1,129 @@
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.BlockBase;
+using com.apama.exceptions.Exception;
+using com.softwareag.connectivity.httpclient.HttpTransport;
+using com.softwareag.connectivity.httpclient.Request;
+using com.softwareag.connectivity.httpclient.Response;
+
+/**
+ * Parameters for the <tt>GoogleChatNotification</tt> block.
+ */
+event GoogleChatNotification_$Parameters {
+
+	/**
+	 * Webhook URL.
+	 *
+	 * The Google Chat space webhook URL to post messages to.
+	 */
+	string webhookUrl;
+
+	/**
+	 * Message.
+	 *
+	 * A default text message to send when no text message input wire is connected. This value is used as a fallback.
+	 */
+	optional<string> message;
+
+	action $validate() {
+		BlockBase.throwsOnEmpty(webhookUrl, "Webhook URL", self);
+		if webhookUrl.find("https://") != 0 {
+			throw Exception("Webhook URL must start with https://", "IllegalArgumentException");
+		}
+	}
+}
+
+/**
+ * Google Chat Notification.
+ *
+ * Posts a message to a Google Chat space using a webhook URL when triggered by a pulse.
+ * The message can be provided via an input wire or configured as a parameter in the block.
+ * If both are available, the wire input takes priority.
+ *
+ * @$blockCategory Output
+ * @$derivedName Google Chat Notification
+ */
+event GoogleChatNotification {
+
+	BlockBase $base;
+	GoogleChatNotification_$Parameters $parameters;
+
+	/** Trigger input is a pulse type. */
+	constant string $INPUT_TYPE_trigger := "pulse";
+
+	HttpTransport transport;
+	string requestPath;
+
+	/**
+	 * Validates that a text message source is available.
+	 * Either a wire must be connected to the textMessage input or a message must be provided in the block parameters.
+	 */
+	action $validate() {
+		if $base.getInputCount("textMessage") = 0 {
+			ifpresent $parameters.message as msg {
+				if msg = "" {
+					throw Exception("Either connect a text message input wire or provide a message in the block parameters", "IllegalArgumentException");
+				}
+			} else {
+				throw Exception("Either connect a text message input wire or provide a message in the block parameters", "IllegalArgumentException");
+			}
+		}
+	}
+
+	action $init() {
+		string url := $parameters.webhookUrl;
+		// Remove https:// prefix
+		string remaining := url.substring("https://".length(), url.length());
+		// Split host and path at first /
+		integer slashIndex := remaining.find("/");
+		string host;
+		if slashIndex >= 0 {
+			host := remaining.substring(0, slashIndex);
+			requestPath := remaining.substring(slashIndex, remaining.length());
+		} else {
+			host := remaining;
+			requestPath := "/";
+		}
+
+		transport := HttpTransport.getOrCreateWithConfigurations(host, 443, {HttpTransport.CONFIG_TLS: "true"});
+		log "GoogleChatNotification: Initialized HTTP transport for host " + host at INFO;
+	}
+
+	/**
+	 * @param $input_trigger Pulse to trigger sending the notification.
+	 * @$inputName trigger Trigger
+	 * @param $input_textMessage Optional text message provided via wire input.
+	 * @$inputName textMessage Text Message
+	 */
+	action $process(Activation $activation, boolean $input_trigger, optional<string> $input_textMessage) {
+		if not $input_trigger {
+			return;
+		}
+
+		string messageToSend := "";
+		ifpresent $input_textMessage as wireMessage {
+			messageToSend := wireMessage;
+		} else {
+			ifpresent $parameters.message as defaultMessage {
+				messageToSend := defaultMessage;
+			}
+		}
+
+		if messageToSend = "" {
+			log "GoogleChatNotification: No message to send, skipping" at WARN;
+			return;
+		}
+
+		Request req := transport.createPOSTRequest(requestPath, {"text": <any>messageToSend});
+		req.execute(handleResponse);
+	}
+
+	action handleResponse(Response response) {
+		if response.isSuccess() {
+			log "GoogleChatNotification: Successfully posted message to Google Chat" at INFO;
+		} else {
+			log "GoogleChatNotification: Failed to post message, status: " + response.statusCode.toString() + " - " + response.statusMessage at ERROR;
+		}
+	}
+}
