@@ -14,7 +14,7 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 - **Events** - Data structures passed between monitors, or to provide reusable helper functions. Also used for Analytics Builder blocks. 
 - **Actions** - Functions/methods in EPL
 - **Streams** - Declarative query language for processing event flows
-- **Listeners** - Event handlers that react to incoming events, often with complex event expressions such as `on all (MeasurementFragment() as m -> OtherEvent() as o and OtherEvent("foo" as o2))`. 
+- **Listeners** - Event handlers that react to incoming events, often with complex event expressions such as `on all (MeasurementFragment() as m -> OtherEvent() as o and OtherEvent(field="foo") as o2)`. 
 
 ## Common EPL Types
 
