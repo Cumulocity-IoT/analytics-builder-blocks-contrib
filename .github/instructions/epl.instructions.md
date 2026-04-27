@@ -62,17 +62,14 @@ Most Cumulocity integrations follow this pattern:
 using com.apama.cumulocity.MeasurementFragment;
 
 monitor MyMonitor {
-    action onload() {
-        monitor.subscribe(MeasurementFragment.SUBSCRIBE_CHANNEL);
-        on all MeasurementFragment(type="c8y_Temperature", valueSeries="T") as m {
-            log "Temperature: " + m.value.toString() at INFO;
-        }
-    }
+	action onload() {
+		monitor.subscribe(MeasurementFragment.SUBSCRIBE_CHANNEL);
+		on all MeasurementFragment(type="c8y_Temperature", valueSeries="T") as m {
+			log "Temperature: " + m.value.toString() at INFO;
+		}
+	}
 }
 ```
-
-See: EPL sample `AlarmOnMeasurementThreshold.mon`
-
 ### 2. Querying Cumulocity Data
 Use request/response pattern with ID correlation:
 
@@ -83,23 +80,23 @@ using com.apama.cumulocity.FindMeasurementResponseAck;
 using com.apama.cumulocity.Util;
 
 monitor QuerySample {
-    action onload() {
-        FindMeasurement req := new FindMeasurement;
-        req.reqId := Util.generateReqId();
-        req.params.add("valueFragmentType", "SpeedMeasurement");
-        monitor.subscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
-        on all FindMeasurementResponse(reqId=req.reqId) as resp and not FindMeasurementResponseAck(reqId=req.reqId) {
-            log resp.measurement.toString() at INFO;
-        }
-        on FindMeasurementResponseAck(reqId=req.reqId) {
-            monitor.unsubscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
-        }
-        send req to FindMeasurement.SEND_CHANNEL;
-    }
+	action onload() {
+		FindMeasurement req := new FindMeasurement;
+		req.reqId := Util.generateReqId();
+		req.params.add("valueFragmentType", "SpeedMeasurement");
+		monitor.subscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
+		on all FindMeasurementResponse(reqId=req.reqId) as resp and not FindMeasurementResponseAck(reqId=req.reqId) {
+			log resp.measurement.toString() at INFO;
+		}
+		on FindMeasurementResponseAck(reqId=req.reqId) {
+			monitor.unsubscribe(FindMeasurementResponse.SUBSCRIBE_CHANNEL);
+		}
+		send req to FindMeasurement.SEND_CHANNEL;
+	}
 }
 ```
 
-See EPL sample: `FindMeasurementSample.mon`
+See block example: `cumulocity-blocks/LastestValue.mon`
 
 ### 3. Calling Other Microservices
 Use CumulocityRequestInterface for HTTP requests:
@@ -109,18 +106,18 @@ using com.apama.cumulocity.CumulocityRequestInterface;
 using com.softwareag.connectivity.httpclient.Request;
 
 monitor MicroserviceCall {
-    action onload() {
-        CumulocityRequestInterface iface := CumulocityRequestInterface.connectToCumulocity();
-        Request req := iface.createRequest("GET", "/service/path", any());
-        req.execute(handleResponse);
-    }
-    action handleResponse(any resp) {
-        log resp.toString() at INFO;
-    }
+	action onload() {
+		CumulocityRequestInterface iface := CumulocityRequestInterface.connectToCumulocity();
+		Request req := iface.createRequest("GET", "/service/path", any());
+		req.execute(handleResponse);
+	}
+	action handleResponse(any resp) {
+		log resp.toString() at INFO;
+	}
 }
 ```
 
-See: EP sample `CallAnotherMicroservice.mon`
+See block example: `service-request-blocks/CreateServiceRequest.mon`
 
 ### 4. Analytics Builder Blocks
 Blocks use parameters, state, and process actions:
@@ -145,15 +142,15 @@ event MyBlock_$State { boolean prevState; }
  * @$derivedName MyBlock $threshold
  */
  event MyBlock {
-    MyBlock_$Parameters $parameters;
-    BlockBase $base;
-    action $process(Activation $activation, MyBlock_$State $state, float $input_value) {
-        $setOutput_result($activation, $input_value > $parameters.threshold);
-    }
+	MyBlock_$Parameters $parameters;
+	BlockBase $base;
+	action $process(Activation $activation, MyBlock_$State $state, float $input_value) {
+		$setOutput_result($activation, $input_value > $parameters.threshold);
+	}
 }
 ```
 
-See blocks: `Threshold.mon`, `ConstantValue.mon`
+See block example: `blocks/DiscreteStatistics.mon`
 
 ## Resources
 - API documentation for the base events provided by Apama CEP including `com.apama.cumulocity.*` is at: https://cumulocity.com/apama/docs/latest/related/ApamaDoc/overview-summary.html
