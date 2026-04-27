@@ -141,7 +141,7 @@ event MyBlock_$State { boolean prevState; }
  * @$blockCategory Calculations
  * @$derivedName MyBlock $threshold
  */
- event MyBlock {
+event MyBlock {
 	MyBlock_$Parameters $parameters;
 	BlockBase $base;
 	action $process(Activation $activation, MyBlock_$State $state, float $input_value) {
