@@ -1,0 +1,40 @@
+FROM arm64v8/debian:12-slim
+
+USER root
+RUN apt update && apt install curl -y && apt clean
+RUN curl https://download.cumulocity.com/Apama/Debian/apama-27.sources -o /etc/apt/sources.list.d/apama-27.sources && curl https://download.cumulocity.com/Apama/Debian/apamarepo.gpg -o /usr/share/keyrings/apamarepo.gpg
+ARG ADDITIONAL_PACKAGES=
+RUN apt update && apt install git tar apama apama-python ${ADDITIONAL_PACKAGES} -y && apt clean
+
+RUN useradd -ms /bin/bash apama
+
+RUN mkdir "/workspaces" && chown -R apama:apama "/workspaces"
+
+USER apama
+ENV APAMA_HOME=/opt/cumulocity/Apama APAMA_WORK=/workspaces
+ENV LD_LIBRARY_PATH="${APAMA_WORK}/lib:${APAMA_HOME}/lib:${APAMA_HOME}/third_party/python/lib" 
+ENV PATH="${APAMA_HOME}/bin:${APAMA_HOME}/third_party/python/bin:$PATH" 
+ENV PYTHONPATH=${APAMA_HOME}/third_party/python//lib/python3.13
+
+
+# Clone the SDKs. We clone under the home dir because "/workspaces" gets overwritten by the mount
+# (and devcontainer.json workspaceMount is not respected in many cases - https://github.com/microsoft/vscode-remote-release/issues/3034)
+ARG APAMA_ANALYTICS_BUILDER_SDK_BRANCH=main
+RUN git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git --branch ${APAMA_ANALYTICS_BUILDER_SDK_BRANCH} ${APAMA_WORK}/apama-analytics-builder-block-sdk
+
+ARG APAMA_EPLAPPS_TOOLS_BRANCH=main
+RUN git clone https://github.com/Cumulocity-IoT/apama-eplapps-tools.git ${APAMA_WORK}/apama-eplapps-tools --branch ${APAMA_EPLAPPS_TOOLS_BRANCH}
+
+# Link the SDKs to the root dir so we can find them from /workspaces/projectdir using a relative path
+USER root
+RUN ln -s ${APAMA_WORK}/apama-analytics-builder-block-sdk /apama-analytics-builder-block-sdk \
+  && ln -s ${APAMA_WORK}/apama-eplapps-tools /apama-eplapps-tools
+
+USER apama
+ENV ANALYTICS_BUILDER_SDK=${APAMA_WORK}/apama-analytics-builder-block-sdk
+ENV EPL_TESTING_SDK=${APAMA_WORK}/apama-eplapps-tools
+ENV PATH="${APAMA_WORK}/apama-eplapps-tools/scripts:${APAMA_WORK}/apama-analytics-builder-block-sdk:${PATH}"
+
+WORKDIR "/workspaces"
+
+ENV SHELL=/bin/bash
