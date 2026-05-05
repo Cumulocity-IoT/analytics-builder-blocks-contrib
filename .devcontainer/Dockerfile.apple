@@ -14,11 +14,8 @@ USER apama
 ENV APAMA_HOME=/opt/cumulocity/Apama APAMA_WORK=/workspaces
 ENV LD_LIBRARY_PATH="${APAMA_WORK}/lib:${APAMA_HOME}/lib:${APAMA_HOME}/third_party/python/lib" 
 ENV PATH="${APAMA_HOME}/bin:${APAMA_HOME}/third_party/python/bin:$PATH" 
-ENV PYTHONPATH=${APAMA_HOME}/third_party/python//lib/python3.13
+ENV PYTHONPATH=${APAMA_HOME}/third_party/python/lib/python3.13
 
-
-# Clone the SDKs. We clone under the home dir because "/workspaces" gets overwritten by the mount
-# (and devcontainer.json workspaceMount is not respected in many cases - https://github.com/microsoft/vscode-remote-release/issues/3034)
 ARG APAMA_ANALYTICS_BUILDER_SDK_BRANCH=main
 RUN git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git --branch ${APAMA_ANALYTICS_BUILDER_SDK_BRANCH} ${APAMA_WORK}/apama-analytics-builder-block-sdk
 
