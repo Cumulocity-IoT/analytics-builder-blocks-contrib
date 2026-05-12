@@ -81,7 +81,7 @@ event CronTimer {
 	action $validate() {
 		float offset := currentTime - $base.getModelTime();
 		if offset > 10.0 {
-			throw Exception("OperationNotSupported", "Sorry, this does not support simulation mode, or maxInputDelay more than 10 seconds");
+			throw Exception("Sorry, this does not support simulation mode, or maxInputDelay more than 10 seconds", "OperationNotSupported");
 		}
 	}
 
