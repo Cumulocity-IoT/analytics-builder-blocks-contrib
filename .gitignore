@@ -2,3 +2,4 @@ tests/**/Output/
 python-blocks/PythonFunction/requirements/
 python-blocks/PythonFunction/venv/
 .DS_Store
+release-artifacts/
