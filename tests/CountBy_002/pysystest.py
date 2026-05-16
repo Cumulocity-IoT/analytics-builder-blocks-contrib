@@ -14,7 +14,7 @@ class PySysTest(AnalyticsBuilderBaseTest):
         correlator.receive('all.evt')
 
         # Deploy the model.
-        self.modelId = self.createTestModel('apamax.analyticsbuilder.custom.CountBy', inputs={'input':'pulse', 'reset':'pulse'}, outputs={'count':'pulse'})
+        self.modelId = self.createTestModel('apamax.analyticsbuilder.custom.CountBy', inputs={'input':'pulse', 'reset':'pulse'}, outputs={'count':'float'})
 
         self.sendEventStrings(correlator,
                               self.timestamp(0.1),  # Initial time setup
