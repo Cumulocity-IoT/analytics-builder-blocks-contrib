@@ -48,5 +48,5 @@ class PySysTest(AnalyticsBuilderBaseTest):
         self.assertGrep(self.analyticsBuilderCorrelator.logfile,
                         expr='Model "' + self.modelId + '" with PRODUCTION mode has started')
 
-        # Verify output: 10 counts followed by reset should output 11.0
+        # Verify output: 10 counts followed by reset should output 10.0
         self.assertBlockOutput('count', [10.0])
