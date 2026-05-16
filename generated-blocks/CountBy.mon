@@ -51,16 +51,16 @@ event CountBy {
 	 */
 	action $process(Activation $activation, boolean $input_input, boolean $input_reset, CountBy_$State $blockState) {
 		// Handle reset input: output current count, then reset.
-        if $input_reset {
-            $setOutput_count($activation, ($blockState.counter).toFloat());
-            $blockState.counter := 0;
-            return;
-        }
+		if $input_reset {
+			$setOutput_count($activation, ($blockState.counter).toFloat());
+			$blockState.counter := 0;
+			return;
+		}
 
 		// Handle input: increment counter silently.
-        if($input_input) {
-            $blockState.counter := $blockState.counter + 1;
-        }
+		if($input_input) {
+			$blockState.counter := $blockState.counter + 1;
+		}
 
 	}
 
