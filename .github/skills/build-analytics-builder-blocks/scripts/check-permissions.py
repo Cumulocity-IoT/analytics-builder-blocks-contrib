@@ -38,12 +38,16 @@ if "--cumulocity_url" in command or "--restart" in command:
 
 # --- Safe build-workflow patterns: auto-approve ---
 SAFE_PATTERNS = [
-    # Discovery (read-only)
+    # Discovery and file reading (read-only)
     r"\bfind\b",
     r"\bls\b",
     r"\bgrep\b",
     r"\bwc\b",
     r"\bunzip\s+-l\b",
+    r"\bcat\b",
+    r"\bsed\b",
+    r"\bhead\b",
+    r"\btail\b",
     # Local directory creation
     r"\bmkdir\s+-p\s+(temp-|\S*release-artifacts)",
     # Copying block source files into a temp dir
@@ -54,9 +58,14 @@ SAFE_PATTERNS = [
     # Running PySys tests
     r"\bpysys\s+run\b",
     # Building an extension bundle (no deployment flags)
-    r"\banalytics_builder\s+build\s+extension\b",
+    # Note: the binary path is often quoted: "$ANALYTICS_BUILDER_SDK/analytics_builder" build extension
+    # so we allow an optional trailing quote character before the whitespace.
+    r"\banalytics_builder[\"']*\s+build\s+extension\b",
     # Removing only the temporary staging directory created by the workflow
     r"\brm\s+-rf\s+\S*temp-\S*",
+    # Removing generated PySys test output directories (safe — fully regenerated on each run)
+    r"\brm\s+-rf\s+tests/[^/]+/Output\b",
+    r"\brm\s+-rf\s+\S+/Output(/linux)?\b",
 ]
 
 for pattern in SAFE_PATTERNS:

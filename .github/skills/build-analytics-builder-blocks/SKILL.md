@@ -78,6 +78,8 @@ Note this to the user — it means the block has no automated test coverage. Pro
 4. Re-run the associated tests in full before proceeding.
 5. **Do not build a block whose tests are failing.**
 
+> **Note — compilation errors surface at test time, not build time.** The `analytics_builder build extension` tool packages `.mon` files into a zip without compiling them. Any EPL syntax or type errors (e.g. wrong argument types for `L10N.getLocalizedException()`) will only produce a failure when the correlator loads the code during a PySys test run. This is why passing tests before building is mandatory.
+
 ---
 
 ## Step 3 — Build Extension Bundles

@@ -47,6 +47,26 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 - Organize code logically: parameters/events first, then monitor/action definitions, then implementation
 - Prefer tabs over spaces for indentation
 
+## Common EPL Pitfalls
+
+These are confirmed sources of runtime or compilation errors:
+
+| Pitfall | Wrong | Correct |
+|---------|-------|---------|
+| Type casting | `myInt as float` | `myInt.toFloat()` |
+| Type casting | `myFloat as integer` | `myFloat.toInteger()` |
+| Event field initialization | `integer counter := 0;` | `integer counter;` (EPL does not support field initializers in event declarations) |
+| Action type parameters | `action<Activation, float> $setOutput_x;` | `action<Activation,float> $setOutput_x;` (no space after comma) |
+| `if` condition — parentheses are required when using non-boolean expressions; prefer them always | `if myBool and otherVal { }` | `if (myBool and otherVal) { }` |
+| `L10N.getLocalizedException()` second argument: must be `sequence<any>`, not `sequence<string>`. Passing raw string literals creates a `sequence<string>` which is a compile error. | `throw L10N.getLocalizedException("key", ["param1"]);` | `throw L10N.getLocalizedException("key", [BlockBase.getL10N_param("field", self), value]);` |
+
+### Analytics Builder block-specific pitfalls
+
+- **Duplicate input/output name**: Input names and output names share a single namespace within a block. A field named `count` as both `$input_count` and `$setOutput_count` is a framework error (`Duplicate name used as input and output`). Use distinct names.
+- **`optional<boolean>` for required inputs**: Use `optional<boolean>` ONLY for inputs that are genuinely optional (i.e. the block works when the wire is not connected). For required pulse inputs, use plain `boolean`. Using `optional` for a required input prevents the block from operating correctly.
+- **State parameter position**: In `$process()`, put input parameters (`$input_*`) before the `_$State` parameter. Example: `action $process(Activation $activation, boolean $input_trigger, MyBlock_$State $blockState)`.
+- **No space in `action<...>` declarations**: Use `action<Activation,float>` not `action<Activation, float>` — the space form may be accepted but is inconsistent with the framework SDK convention; the no-space form is used by all built-in blocks.
+
 ## Documentation Comments (ApamaDoc)
 - Use `/** ... */` for all public events, monitors, and non-obvious actions
 - Document parameters and return values using `@param` and `@returns` tags

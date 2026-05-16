@@ -67,8 +67,15 @@ class PySysTest(AnalyticsBuilderBaseTest):
         correlator.receive('all.evt')
 
         # Deploy the model. Pass parameters if the block has any.
-        self.modelId = self.createTestModel('<fully.qualified.BlockId>',
-                                           {'paramName': value})  # omit if no params
+        # Always declare ALL inputs and outputs that will be connected in this test.
+        # Omit inputs/outputs dicts only when using defaults (float type, all ports connected).
+        self.modelId = self.createTestModel(
+            '<fully.qualified.BlockId>',
+            {'paramName': value},              # omit if no params
+            inputs={'inputName': 'float',      # list every input wired in this test
+                    'inputName2': 'pulse'},    # use 'pulse', 'float', 'boolean', 'string'
+            outputs={'outputName': 'float'},   # list every output asserted in this test
+        )
 
         self.sendEventStrings(correlator,
                               self.timestamp(1),
@@ -141,6 +148,19 @@ self.assertThat("expected == output",
 ## Step 5 — Key Rules
 
 - **Always send a final `self.timestamp()` after the last input** — otherwise the last events may not be processed.
+- **Always declare all connected inputs and outputs in `createTestModel`**: pass `inputs={'name': 'type', ...}` and `outputs={'name': 'type', ...}` for every port used in the test. The type string matches the `$INPUT_TYPE_` / `$OUTPUT_TYPE_` constant value (`'pulse'`, `'float'`, `'boolean'`, `'string'`). Omitting a mandatory input means the framework treats it as disconnected, which causes incorrect or no output.
+
+  ```python
+  # CORRECT — all ports declared
+  self.modelId = self.createTestModel(
+      'apamax.analyticsbuilder.custom.CountBy',
+      inputs={'input': 'pulse', 'reset': 'pulse'},
+      outputs={'count': 'float'},
+  )
+
+  # WRONG — omitting inputs/outputs causes the block to behave as if inputs are disconnected
+  self.modelId = self.createTestModel('apamax.analyticsbuilder.custom.CountBy')
+  ```
 - Events sent between two timestamps that are **less than 0.1 s apart** are held and processed together.
 - **For blocks with multiple inputs that must be evaluated together** (e.g. `value1` and `value2`), send all of them _between the same pair of timestamps_. Sending them at different timestamps causes the block to fire once per input, producing more outputs than expected:
 

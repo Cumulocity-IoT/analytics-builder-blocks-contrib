@@ -1,0 +1,78 @@
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+/**
+ * State of the CountBy block — persisted across activations by the framework.
+ *
+ * Tracks the accumulated count between reset signals.
+ *
+ * State fields must be serializable. The following EPL types are NOT allowed in state:
+ * - action<...> (action references)
+ * - chunk
+ * - listener
+ * - any value of the above types, including nested inside events or sequences
+ */
+event CountBy_$State {
+	integer counter;
+}
+
+/**
+ * CountBy
+ *
+ * Counts the number of signals received on one input, and outputs the accumulated count when a reset signal is received.
+ *
+ * Each arrival on the `count` input increments an internal counter. No output is produced.
+ * When a signal arrives on the `reset` input, the accumulated count is output and then the counter is reset to zero.
+ * This is useful for metering one signal rate relative to another (e.g. "counts per interval" or "counts per trigger event").
+ *
+ * @$blockCategory Aggregates
+ */
+event CountBy {
+
+	BlockBase $base;
+
+	/**
+	 * Called once at block start up to initialize state.
+	 */
+	action $init() {
+		// State will be initialized by framework, but ensure counter starts at 0
+	}
+
+	/**
+	 * @param $activation The current activation.
+	 * @param $input_input An input pulse to count (increments the counter, no output).
+	 * @param $input_reset A reset pulse (outputs the current count, then resets counter to zero).
+	 * @param $blockState The current persisted state of the block.
+	 *
+	 * @$inputName input Input
+	 * @$inputName reset Reset
+	 */
+	action $process(Activation $activation, boolean $input_input, boolean $input_reset, CountBy_$State $blockState) {
+		// Handle reset input: output current count, then reset.
+        if $input_reset {
+            $setOutput_count($activation, ($blockState.counter).toFloat());
+            $blockState.counter := 0;
+            return;
+        }
+
+		// Handle input: increment counter silently.
+        if($input_input) {
+            $blockState.counter := $blockState.counter + 1;
+        }
+
+	}
+
+	/**
+	 * The accumulated count.
+	 *
+	 * Outputs the current count value when the reset input fires.
+	 * The value is the number of count pulses received since the last reset (or since initialization if no reset has fired yet).
+	 */
+	action<Activation,float> $setOutput_count;
+
+	// Declare both inputs as pulse type.
+	constant string $INPUT_TYPE_input := "pulse";
+	constant string $INPUT_TYPE_reset := "pulse";
+}
