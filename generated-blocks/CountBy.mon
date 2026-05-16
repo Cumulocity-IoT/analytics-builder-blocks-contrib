@@ -23,7 +23,7 @@ event CountBy_$State {
  *
  * Counts the number of signals received on one input, and outputs the accumulated count when a reset signal is received.
  *
- * Each arrival on the `count` input increments an internal counter. No output is produced.
+ * Each arrival on the `input` input increments an internal counter. No output is produced.
  * When a signal arrives on the `reset` input, the accumulated count is output and then the counter is reset to zero.
  * This is useful for metering one signal rate relative to another (e.g. "counts per interval" or "counts per trigger event").
  *
