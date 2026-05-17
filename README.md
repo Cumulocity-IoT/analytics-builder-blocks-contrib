@@ -47,6 +47,8 @@ This repository ships three GitHub Copilot agent skills that let you create, tes
 
 Guides the agent through the full lifecycle of creating a new block: requirements analysis, development plan, EPL implementation, and test verification.
 
+*Limitations* The skill does not contain information to develop input & output blocks (especially for Cumulocity) and will consequently not do well for these. It also contains no knowledge about partitions thus will not work well for blocks that run across groups.
+
 **Example prompts:**
 
 ```
