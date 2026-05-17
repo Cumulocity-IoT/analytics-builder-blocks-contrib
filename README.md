@@ -29,6 +29,43 @@ The repository contains a Development Container setup that starts a container wi
 * When using the default Dockerfile, the latest versions of Apama, the Block SDK and the EPL Apps Tools will be installed by default. This is the recommended setup but if you require a specific version of each, you can overwrite the APAMA_VERSION, APAMA_ANALYTICS_BUILDER_SDK_BRANCH, and APAMA_EPLAPPS_TOOLS_BRANCH variables in devcontainer.json.
 * If you are using a computer running macOS on Apple silicon, it is recommended to replace the Dockerfile in devcontainer.json with Dockerfile.apple which uses an ARM64 base image yielding significantly better performance. This Dockerfile will currently always use Apama 27.
 
+
+## Repository Structure
+
+The repository organises blocks into separate folders by category, with shared infrastructure for tests and tooling alongside.
+
+```
+analytics-builder-blocks-contrib/
+├── blocks/                    # General-purpose calculation and utility blocks
+├── cumulocity-blocks/         # Blocks that integrate directly with Cumulocity IoT
+├── simulation-blocks/         # Blocks for generating simulated data streams
+├── service-request-blocks/    # Blocks for calling external services
+├── python-blocks/             # Blocks that execute Python functions
+├── generated-blocks/          # Blocks generated or created via the Copilot agent skills
+├── tests/                     # PySys test cases (one subdirectory per test)
+├── utils/                     # Shared EPL utilities used by tests (e.g. mocks)
+├── config/                    # Connectivity configuration files
+```
+
+### Block folders
+
+| Folder | Contents |
+|---|---|
+| `blocks/` | General-purpose blocks: mathematical operations (`Abs`, `MathOperation`, `Offset`), signal processing (`EdgeDetection`, `RateLimiter`, `RootMeanSquare`), statistics (`DiscreteStatistics`), time utilities (`CronTimer`, `DateTimeStringToSeconds`, `TimeOffset`, `ModelTime`), data format helpers (`CSVReader`, `CSVWriter`, `BaseNConverter`), and integration helpers (`HttpOutputBlock`, `SendEmail`, `WebHook`, `Logging`). |
+| `cumulocity-blocks/` | Blocks that read from or write to Cumulocity: measurement input/output (`DeviceMeasurementInput`, `CreateMeasurement`, `CreateMultiMeasurement`, `CreateBatchMeasurements`), device messaging (`InboundDeviceMessage`), OPC UA (`CreateOpcUAWrite`), and aggregation helpers (`LastestValue`, `SumLast`, `TimeTicker`). These blocks depend on Cumulocity event types and connectivity. |
+| `simulation-blocks/` | Blocks for producing synthetic data streams: waveform generators (`WaveFormGenerator`, `ApproximateWaveFormGenerator`), random signals (`Random`, `RandomWalk`, `RandomWalk2D`), a fixed-value `Constant`, an `IntervalPulseGenerator`, and a `ProcessControl` block. Useful for model testing without live device data. |
+| `service-request-blocks/` | Blocks for making request to [Field Service Management (FSM) Integration](https://github.com/Cumulocity-IoT/cumulocity-microservice-service-request-mgmt). Currently contains `CreateServiceRequest`. |
+| `python-blocks/` | The `PythonFunction` block, which allows an Analytics Builder model to execute arbitrary Python code. |
+| `generated-blocks/` | Blocks created during development using the Copilot agent skills (e.g. `CountBy`, `Limit`, `DistanceTravelled`). New agent-generated blocks are placed here by convention unless a more specific folder applies. |
+
+### Other top-level folders
+
+| Folder | Purpose |
+|---|---|
+| `tests/` | PySys test cases. Each subdirectory (`<BlockName>_NNN/`) contains a `pysystest.py` for one scenario. Run with `pysys run <TestId>` or `pysys run` to run all. |
+| `utils/` | Shared EPL helpers loaded by tests — currently contains `DeviceServiceMock.mon`, a mock for Cumulocity device/service interactions. |
+| `config/` | Connectivity configuration used when running the correlator locally (YAML/properties files under `config/connectivity/`). |
+
 ## GitHub Copilot Agent Skills
 
 This repository ships three GitHub Copilot agent skills that let you create, test, and ship Analytics Builder blocks using natural language instructions. The skills are located under `.github/skills/` and are automatically offered to the agent when relevant tasks are requested.
@@ -157,6 +194,6 @@ This project is licensed under the Apache 2.0 license - see <https://www.apache.
 ______________________
 These tools are provided as-is and without warranty or support. They do not constitute part of the Cumulocity products. Users are free to use, fork and modify them, subject to the license agreement. While Cumulocity welcomes contributions, we cannot guarantee to include every contribution in the master project.
 
-Contact us at https://apamacommunity.com if you have any questions.
+Contact us at https://community.cumulocity.com/ if you have any questions.
 ______________________
 

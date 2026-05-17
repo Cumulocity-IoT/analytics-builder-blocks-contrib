@@ -18,6 +18,8 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 
 ## Common EPL Types
 
+- **`float`** - 64-bit floating point number. Operations: arithmetic (`+`, `-`, `*`, `/`), `.abs()`, `.sin()`, `.cos()`, `.tan()`, `.asin()`, `.acos()`, `.atan()`, `.atan2(y)`, `.sqrt()`, `.pow(exp)`, `.log()`, `.ceil()`, `.floor()`, `.round()`, `.toInteger()`, `.toString()`, `.isFinite()`, `.isNaN()`. Built-in constants: `float.PI` (π ≈ 3.14159…), `float.INFINITY`, `float.NAN`, `float.MAX`, `float.MIN`. Always use `float.PI` rather than hardcoding the numeric value.
+
 - **`string`** - Immutable text string. Operations: `length()`, `contains()`, `find()`, `substring()`, `split(delimiter)`, `replace(regex, replacement)`, `matches(regex)`, `toLower()`, `toUpper()`, `ltrim()`, `rtrim()`. Supports `+` concatenation and comparisons. String methods like `find()` return -1 if not found. Use `groupSearch(regex)` for regex extraction groups.
 
 - **`sequence<TYPE>`** - Ordered list with dynamic size. Operations: `append(item)`, `insert(item, index)`, `remove(index)`, `size()`, `isEmpty()`, `contains(item)`, `indexOf(item)`, `sort()`, `reverse()`. Access elements with `[index]` (0-based, negative indexes from end), or iterate with `for item in sequence`. Use `getOr(index, default)` for safe access without exceptions.
@@ -35,6 +37,12 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 - **`com.apama.exceptions.Exception`** - All exceptions are an instance of this. To throw an exception: `throw Exception("Message goes here", "ExceptionTypeGoesHere");`. Exceptions can be caught with `try {} catch (com.apama.exceptions.Exception e) {}` but use sparingly - main use is in listener statements to avoid the listener terminating if there is an exception. 
 
 - **`com.apama.util.AnyExtractor`** - Type-safe way to extract nested values from `any` data (JSON, events, dictionaries). Supports path notation like `"field"`, `"field.nested"`, `"array[0].item"` with both `.` and `[]` operators. Methods: `getString(path)`, `getInteger(path)`, `getFloat(path)`, `getBoolean(path)`, or `getAny(path)` for any type. Use `*Or()` variants for safe extraction with defaults: `getStringOr(path, default)`.
+
+  `AnyExtractor` can also wrap a `dictionary<string,any>` directly — useful for extracting fields from a `Value`'s properties dictionary without first casting to `any`:
+  ```epl
+  float lat := AnyExtractor($input_position.properties).getFloatOr("lat", 0.0);
+  ```
+  The `getFloatOr()` method automatically converts integer values to float, so it handles both `float` and `integer` entries in the dictionary without manual casting.
 
 - **`com.apama.correlator.timeformat.TimeFormat`** - Date/time formatting and parsing utility. Works with float timestamps (seconds since UNIX epoch). Key methods: `format(timestamp, pattern)` (format time), `parseTime(pattern, dateString)` (parse to timestamp), `formatUTC()`, `parseTimeUTC()` for UTC, or `*WithTimeZone()` variants for specific timezones. Also provides `getSystemTime()` to get current time and component extraction (dateComponent, timeComponent). Supports patterns like `"yyyy.MM.dd HH:mm:ss"`.
 
@@ -169,7 +177,7 @@ event MyBlock_$State { boolean prevState; }
 event MyBlock {
 	MyBlock_$Parameters $parameters;
 	BlockBase $base;
-	action $process(Activation $activation, MyBlock_$State $state, float $input_value) {
+	action $process(Activation $activation, float $input_value, MyBlock_$State $blockState) {
 		$setOutput_result($activation, $input_value > $parameters.threshold);
 	}
 }

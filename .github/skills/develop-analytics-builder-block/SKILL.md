@@ -76,7 +76,28 @@ Add the tag as a `$METADATA_<paramName>` constant string on the `_$Parameters` e
 
 - Use `any` or `Value` as the `$process` parameter type when the block must accept different types depending on what is connected.
 - Use `BlockBase.getInputTypeName(inputId)` inside `$validate()` to inspect the connected type and throw an exception if it is incorrect.
-- `Value` carries a `value` field of type `any` plus optional extra properties. When a `Value` output is connected to a simple-typed input, the framework automatically unpacks it. Use `Value` when the block needs to pass along extra properties (e.g. Cumulocity measurement metadata).
+- `Value` carries a `value` field of type `any` plus optional extra properties (`dictionary<string,any>`). When a `Value` output is connected to a simple-typed input, the framework automatically unpacks it. Use `Value` when the block needs to pass along extra properties (e.g. Cumulocity measurement metadata, GPS coordinates).
+
+**When to use `Value` inputs**: use a `Value` input whenever the signal carries structured data in its `properties` dictionary (e.g. a GPS position with `lat`/`lng` fields, a measurement with multiple series). The wire type in Analytics Builder is treated as `pulse` — the `value` field carries the boolean pulse signal and the `properties` dictionary carries the structured payload.
+
+**Extracting properties from a `Value` input**: use `AnyExtractor` to safely extract fields from `$input_<name>.properties`:
+
+```epl
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.Value;
+
+action $process(Activation $activation, Value $input_position) {
+    if not $input_position.properties.hasKey("lat") or
+       not $input_position.properties.hasKey("lng") {
+        return; // missing required fields — skip this activation
+    }
+    float lat := AnyExtractor($input_position.properties).getFloatOr("lat", 0.0);
+    float lng := AnyExtractor($input_position.properties).getFloatOr("lng", 0.0);
+    // ... process lat/lng
+}
+```
+
+`AnyExtractor.getFloatOr()` handles both `float` and `integer` values in the dictionary automatically. Always validate that required keys exist via `hasKey()` before extracting.
 
 #### BlockBase API (`$base` field)
 

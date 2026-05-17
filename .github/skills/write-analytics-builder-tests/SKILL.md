@@ -226,6 +226,31 @@ self.sendEventStrings(correlator,
 self.assertBlockOutput('output', [15.0])  # exactly one output: 10.0 + 5.0
 ```
 
+### Block with `Value` input (structured properties, e.g. GPS position)
+
+When a block declares a `Value $input_<name>` parameter, the input carries structured data in its `properties` dictionary. In tests, declare the type as `'pulse'` and pass the properties via the `properties=` keyword argument to `inputEvent()`. The first positional argument is `True` (the pulse signal):
+
+```python
+self.modelId = self.createTestModel(
+    'apamax.analyticsbuilder.custom.DistanceTravelled',
+    inputs={'position': 'pulse'},   # Value inputs are declared as 'pulse' in tests
+    outputs={'distance': 'float'},
+)
+self.sendEventStrings(correlator,
+    self.timestamp(1),
+    self.inputEvent('position', True, id=self.modelId, properties={'lat': 51.5074, 'lng': -0.1278}),
+    self.timestamp(2),
+    self.inputEvent('position', True, id=self.modelId, properties={'lat': 48.8566, 'lng': 2.3522}),
+    self.timestamp(10),
+)
+# validate
+self.assertBlockOutput('distance', [343556.06])
+```
+
+> **Rule**: blocks that receive `Value` inputs with `.properties` data — declare `'pulse'` in `createTestModel` and use `inputEvent(..., True, properties={...})`. Never use `'any'`, `'string'`, or `'dictionary<string,any>'` for this case.
+
+---
+
 ### Block with parameters and numeric output
 
 ```python
