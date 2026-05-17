@@ -307,6 +307,26 @@ event <BlockName>_$Parameters {
 		}
 	}
 }
+```
+
+#### Available L10N validation keys
+
+| Key | Arguments | When to use |
+|-----|-----------|-------------|
+| `fwk_param_finite_positive_value` | `[paramName, actualValue]` | Value must be > 0.0 and finite |
+| `fwk_param_valid_range` | `[paramName, min, max, actualValue]` | Value must be within a bounded range (e.g. 0.0 to 1.0) |
+| `fwk_param_missing_required_value` | `[paramName]` | Required parameter not provided |
+| `fwk_param_invalid_value` | `[fieldName1, fieldName2]` | Related fields in conflict (e.g. lower > upper) |
+
+Example — range-bounded parameter:
+```epl
+action $validate() {
+	if (not alpha.isFinite() or alpha < 0.0 or alpha > 1.0) {
+		throw L10N.getLocalizedException("fwk_param_valid_range",
+			[BlockBase.getL10N_param("alpha", self), "0.0", "1.0", alpha]);
+	}
+}
+```
 
 /**
  * State of the block — persisted across activations by the framework.
@@ -320,10 +340,13 @@ event <BlockName>_$Parameters {
  * - chunk
  * - listener
  * - any value of the above types, including nested inside events or sequences
+ *
+ * Prefer `optional<T>` over a separate `boolean initialized` field when tracking first activation.
+ * The `ifpresent` pattern is cleaner:
+ *   optional<float> previousValue;  // empty = first activation
  */
 event <BlockName>_$State {
-	<type> <stateField>;
-	boolean initialized;  // Example: track whether first activation has occurred
+	optional<float> <stateField>;  // empty means first activation has not occurred
 }
 
 /**
@@ -365,14 +388,17 @@ event <BlockName> {
 
 		// Handle optional reset input.
 		if ($input_reset) {
-			$blockState.<stateField> := <initialValue>;
-			$blockState.initialized := false;
+			$blockState.<stateField> := new optional<float>;
 		}
 
-		// Update state and produce output.
-		// Example pattern:
-		// $blockState.<stateField> := ...;
-		// $setOutput_<outputName>($activation, ...);
+		// First-activation pattern using optional + ifpresent:
+		ifpresent $blockState.<stateField> as prevValue {
+			// Subsequent activations: use prevValue and current input
+			// $setOutput_<outputName>($activation, ...);
+		} else {
+			// First activation: initialize state
+			$blockState.<stateField> := $input_<inputName>;
+		}
 	}
 
 	/**
