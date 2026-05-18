@@ -111,7 +111,7 @@ event GoogleChatNotification {
 		}
 
 		if messageToSend = "" {
-			log "GoogleChatNotification: No message to send, skipping" at WARN;
+			log "GoogleChatNotification: No message to send, skipping" at INFO;
 			return;
 		}
 
@@ -121,9 +121,9 @@ event GoogleChatNotification {
 
 	action handleResponse(Response response) {
 		if response.isSuccess() {
-			log "GoogleChatNotification: Successfully posted message to Google Chat" at INFO;
+			log "GoogleChatNotification: Successfully posted message to Google Chat" at DEBUG;
 		} else {
-			log "GoogleChatNotification: Failed to post message, status: " + response.statusCode.toString() + " - " + response.statusMessage at ERROR;
+			log "GoogleChatNotification: Failed to post message, status: " + response.statusCode.toString() + " - " + response.statusMessage at DEBUG;
 		}
 	}
 }
