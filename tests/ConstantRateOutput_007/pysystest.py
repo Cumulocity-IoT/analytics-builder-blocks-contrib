@@ -48,7 +48,7 @@ class PySysTest(AnalyticsBuilderBaseTest):
 			self.timestamp(10),                                # t=10: no timer trigger, no output
 			self.timestamp(13),                                # t=13: timer fires (period started at t=3) -> output 2.0
 			self.timestamp(16),                                # t=16: new input, no output (within period)
-            self.inputEvent('value', 4.0, id=self.modelId),   # t=16: new input -> output 4.0 immediately
+			self.inputEvent('value', 4.0, id=self.modelId),   # t=16: new input -> output 4.0 immediately
 			self.timestamp(23),                                # t=23: timer fires (13+10) -> no output (already output in period)
 			self.timestamp(33),                                # t=33: timer fires (23+10) -> resend 4.0
 			self.timestamp(34)                                 # final flush
