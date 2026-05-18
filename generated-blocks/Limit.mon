@@ -43,8 +43,10 @@ event Limit_$Parameters {
 
 		// At least one limit must be provided
 		if (not hasLower and not hasUpper) {
-			throw L10N.getLocalizedException("fwk_param_missing_required_value",
-				[BlockBase.getL10N_param("Limit", self)]);
+			throw com.apama.exceptions.Exception(
+				"At least one of " + BlockBase.getL10N_param("lowerLimit", self) + " or " +
+				BlockBase.getL10N_param("upperLimit", self) + " must be set.",
+				"fwk_param_missing_required_value");
 		}
 
 		// If both limits are provided, lower must be <= upper
