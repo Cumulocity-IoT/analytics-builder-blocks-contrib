@@ -192,6 +192,52 @@ self.assertThat("expected == output",
 
 ---
 
+## Testing Timer-Based Blocks
+
+Blocks that use timers (`TimerParams.recurring`, `TimerParams.relative`, etc.) require careful timestamp placement in tests. The correlator is externally clocked, so **timers only fire when you advance time past their trigger point**.
+
+### Key principles
+
+1. **Timer fires when time advances past the trigger point** — A recurring timer created at t=3 with period=10 fires when you send `self.timestamp(13)` (or any time ≥ 13).
+2. **Place timestamps at timer boundaries** — To verify timer output, send a `self.timestamp()` at exactly the expected fire time.
+3. **Inputs between timer ticks are accumulated** — Inputs sent between timer fires are processed immediately but timer output only appears at the next tick.
+4. **Use `outputExpr` with `time=` to verify exact output timing**:
+   ```python
+   self.assertGrep('output.evt', expr=self.outputExpr('output', 2.0, time=13))
+   ```
+
+### Example — Testing a recurring timer block
+
+```python
+# Block with period=10s, first input at t=3 starts the timer
+self.sendEventStrings(correlator,
+    self.timestamp(3),
+    self.inputEvent('value', 1.0, id=self.modelId),   # t=3: starts timer, period=10
+    self.timestamp(7),
+    self.inputEvent('value', 2.0, id=self.modelId),   # t=7: within first period
+    self.timestamp(13),                                # t=13: timer fires (3+10)
+    self.timestamp(23),                                # t=23: timer fires again (13+10)
+    self.timestamp(24),                                # final flush
+)
+
+# Validate with timestamp assertions
+self.assertBlockOutput('output', [1.0, 2.0, 2.0])
+self.assertGrep('output.evt', expr=self.outputExpr('output', 1.0, time=3))
+self.assertGrep('output.evt', expr=self.outputExpr('output', 2.0, time=13))
+self.assertGrep('output.evt', expr=self.outputExpr('output', 2.0, time=23))
+```
+
+### Common timer testing mistakes
+
+| Mistake | Consequence | Fix |
+|---------|-------------|-----|
+| Not advancing time past the timer fire point | Timer never fires, no output | Add `self.timestamp(fireTime)` |
+| Final timestamp too close to last timer | Timer doesn't get a chance to output | Add a final flush timestamp after the last expected timer fire |
+| Expecting immediate output from a delayed/queued block | Test fails with fewer outputs than expected | Understand whether the block outputs on input or on timer tick |
+| Recurring timer period calculation wrong | Outputs at unexpected times | Timer fires at `(creation_time + N * period)` for N=1,2,3... |
+
+---
+
 ## Examples
 
 ### Boolean gate block (no parameters)

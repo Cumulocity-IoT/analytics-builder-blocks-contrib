@@ -65,6 +65,7 @@ These are confirmed sources of runtime, compilation, or framework errors:
 | Type casting | `myFloat as integer` | `myFloat.toInteger()` |
 | Event field initialization | `integer counter := 0;` | `integer counter;` (EPL does not support field initializers in event declarations) |
 | `L10N.getLocalizedException()` second argument: must be `sequence<any>`, not `sequence<string>`. Passing raw string literals creates a `sequence<string>` which is a compile error. | `throw L10N.getLocalizedException("key", ["param1"]);` | `throw L10N.getLocalizedException("key", [BlockBase.getL10N_param("field", self), value]);` |
+| `optional` does not have `hasValue()`. Use `isEmpty()` and negate it to check if a value is present. | `if (myOpt.hasValue()) { ... }` | `if (not myOpt.isEmpty()) { ... }` or use `ifpresent myOpt as val { ... }` |
 
 Style recommendations used in this repository:
 

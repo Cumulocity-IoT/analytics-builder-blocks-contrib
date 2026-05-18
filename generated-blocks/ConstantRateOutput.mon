@@ -1,0 +1,209 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.L10N;
+using com.apama.exceptions.Exception;
+
+
+/**
+ * Parameters for ConstantRateOutput.
+ */
+event ConstantRateOutput_$Parameters {
+
+	/**
+	 * Period (s).
+	 *
+	 * The output period in seconds. The block outputs at most one value per period.
+	 * The period starts with the first received input.
+	 */
+	float period;
+
+	/**
+	 * Limit only.
+	 *
+	 * If enabled, the output rate is limited to one per period but if no inputs
+	 * are received in a period, no outputs are produced.
+	 * If disabled, the previous value is resent every period, ensuring exactly
+	 * one output per period (once an input has been received).
+	 */
+	boolean limitOnly;
+
+	/**
+	 * Delay to end of period.
+	 *
+	 * If enabled, inputs are delayed until the end of the period.
+	 * If disabled, inputs are output immediately but subject to the period rate limit.
+	 */
+	boolean delayToEndOfPeriod;
+
+	action $validate() {
+		if (not period.isFinite() or period <= 0.0) {
+			throw L10N.getLocalizedException("fwk_param_finite_positive_value",
+				[BlockBase.getL10N_param("period", self), period]);
+		}
+	}
+}
+
+
+/**
+ * State of the ConstantRateOutput block — persisted across activations.
+ */
+event ConstantRateOutput_$State {
+	/** The last received input value. */
+	optional<Value> lastValue;
+	
+	/** Pending input waiting to be output (for delayed mode). */
+	optional<Value> pendingValue;
+	
+	/** Whether an input was received in the current period. */
+	boolean inputInCurrentPeriod;
+	
+	/** Whether we have already output in the current period (for immediate mode). */
+	boolean outputInCurrentPeriod;
+	
+	/** Handle to the recurring timer. */
+	optional<TimerHandle> timerHandle;
+}
+
+
+/**
+ * Constant Rate Output.
+ *
+ * Takes an arbitrary Value object as input and outputs the unchanged value,
+ * but at a modified rate controlled by the period parameter.
+ *
+ * The period parameter in seconds limits the output to one output per period.
+ * The period starts with the first received input. If no input is received in
+ * a time period and "Limit only" is disabled, the previous value is resent,
+ * ensuring exactly one output per period.
+ *
+ * The "Limit only" parameter allows deactivating the repeated outputs. If enabled,
+ * the output rate is limited to one per period but if no inputs are received
+ * in a period, no outputs are produced.
+ *
+ * The "Delay to end of period" parameter controls whether inputs should be
+ * delayed until the end of the period or produced as soon as they arrive
+ * (subject to rate limiting).
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Constant Rate Output $period
+ */
+event ConstantRateOutput {
+
+	BlockBase $base;
+	ConstantRateOutput_$Parameters $parameters;
+
+	/**
+	 * @param $activation The current activation.
+	 * @param $input_value The input value to rate-limit.
+	 * @param $blockState The persisted state of the block.
+	 *
+	 * @$inputName value Value
+	 */
+	action $process(Activation $activation, Value $input_value, ConstantRateOutput_$State $blockState) {
+		// Update the last received value
+		$blockState.lastValue := $input_value;
+		
+		// Mark that we received input in this period
+		$blockState.inputInCurrentPeriod := true;
+
+		ifpresent $blockState.timerHandle as timer {
+			// Timer already running; just update state based on mode
+			if ($parameters.delayToEndOfPeriod) {
+				// In delayed mode, queue the input for the next timer tick
+				$blockState.pendingValue := $input_value;
+			} else {
+				// In immediate mode: output only if this is the first input in the period
+				if (not $blockState.outputInCurrentPeriod) {
+					$setOutput_output($activation, $input_value);
+					$blockState.outputInCurrentPeriod := true;
+				} else {
+					// Subsequent input in period; queue for timer output
+					$blockState.pendingValue := $input_value;
+				}
+			}
+		} else {
+			// First input ever; create the timer
+			TimerParams tp := TimerParams.recurring($parameters.period);
+			TimerHandle handle := $base.createTimerWith(tp);
+			$blockState.timerHandle := handle;
+
+			if ($parameters.delayToEndOfPeriod) {
+				// In delayed mode, queue for output on timer tick
+				$blockState.pendingValue := $input_value;
+			} else {
+				// In immediate mode, output the first value immediately
+				$setOutput_output($activation, $input_value);
+				$blockState.outputInCurrentPeriod := true;
+			}
+		}
+	}
+
+	/**
+	 * Triggered when the period timer fires.
+	 *
+	 * @param $activation The current activation.
+	 * @param $blockState The persisted state of the block.
+	 */
+	action $timerTriggered(Activation $activation, ConstantRateOutput_$State $blockState) {
+		if ($parameters.delayToEndOfPeriod) {
+			// In delayed mode, output what was queued (if anything)
+			if ($blockState.pendingValue.isEmpty()) {
+				// No pending value
+				if (not $parameters.limitOnly) {
+					// limitOnly is false: resend last value
+					ifpresent $blockState.lastValue as lv {
+						$setOutput_output($activation, lv);
+					}
+				}
+				// If limitOnly is true, suppress output
+			} else {
+				// There is a pending value from this period
+				ifpresent $blockState.pendingValue as pv {
+					$setOutput_output($activation, pv);
+				}
+				$blockState.pendingValue := new optional<Value>;
+			}
+		} else {
+			// In immediate mode
+			boolean hadPending := not $blockState.pendingValue.isEmpty();
+			
+			if (hadPending) {
+				// We have a queued input from this period - output it
+				ifpresent $blockState.pendingValue as pv {
+					$setOutput_output($activation, pv);
+				}
+			} else if (not $blockState.outputInCurrentPeriod and not $blockState.inputInCurrentPeriod and not $parameters.limitOnly) {
+				// No pending input, no input in period, no output yet, but limitOnly is false: resend last value
+				ifpresent $blockState.lastValue as lv {
+					$setOutput_output($activation, lv);
+				}
+			}
+			// Clear pending (whether we output it or not)
+			$blockState.pendingValue := new optional<Value>;
+		}
+
+		// Reset for the next period
+		$blockState.inputInCurrentPeriod := false;
+		$blockState.outputInCurrentPeriod := false;
+	}
+
+	/**
+	 * Rate-limited output value.
+	 *
+	 * The output value unchanged from the input, but output subject to
+	 * the rate limit defined by the period parameter.
+	 */
+	action<Activation,Value> $setOutput_output;
+	
+	constant string $OUTPUT_TYPE_output := "input(value)";
+}

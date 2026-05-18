@@ -177,12 +177,13 @@ Only proceed to implementation once the user confirms the plan.
 
 > **Pulse vs continuous reminder**: before choosing a template, confirm whether any input or output is a pulse. If so, note that pulse inputs are automatically reset after each evaluation — do not rely on a pulse input holding its value between activations.
 
-### Decision: Stateless or Stateful?
+### Decision: Stateless, Stateful, or Timer-based?
 
 | Condition | Template |
 |---|---|
-| Output depends only on the **current** inputs and parameters | **Stateless** |
-| Output depends on **previous** inputs (history, counters, previous value) | **Stateful** |
+| Output depends only on the **current** inputs and parameters | **Stateless** (Template A) |
+| Output depends on **previous** inputs (history, counters, previous value) | **Stateful** (Template B) |
+| Output is produced on a schedule or after a delay (rate limiting, periodic, delayed) | **Timer-based** (Template C) |
 
 ---
 
@@ -415,6 +416,131 @@ event <BlockName> {
 	// constant string $INPUT_TYPE_reset := "pulse";
 }
 ```
+
+---
+
+### Template C — Timer-based block (produces output on a schedule)
+
+Use for: periodic output, rate limiting, delayed output, sampling at intervals.
+
+Timers must be managed by the Analytics Builder framework — blocks must **not** use the EPL `currentTime` variable. Instead, use `$activation.timestamp` from the `Activation` object.
+
+To create a timer, use `$base.createTimerWith(timerParams)`. The framework calls `$timerTriggered` on the block when the timer fires.
+
+#### Timer types (`TimerParams`)
+
+| Factory method | Behaviour |
+|---|---|
+| `TimerParams.relative(durationSec)` | Fires once after the specified duration from creation time |
+| `TimerParams.recurring(intervalSec)` | Fires repeatedly at the specified interval |
+| `TimerParams.absolute(timeSec)` | Fires at an absolute point in time |
+
+All methods return a `TimerParams` which can be further modified with:
+- `.withPayload(any)` — data passed back to `$timerTriggered` as `$payload`
+- `.withPartition(any)` — partition for the timer (use `Partition_Broadcast` for cross-partition)
+- `.withInputId(string)` — input ID supplied back on trigger
+
+#### `$timerTriggered` action signature
+
+The `$timerTriggered` action can declare any subset of these parameters (in any order):
+
+| Parameter | Type | Description |
+|---|---|---|
+| `$activation` | `Activation` | Current activation — pass to `$setOutput_*` to produce output |
+| `$blockState` | `<Block>_$State` | Persisted state of the block |
+| `$payload` | any EPL type | The payload set via `.withPayload()` |
+| `$input_<name>` | input type | **Latest** value of the named input (not the value when timer was created) |
+| `$timerHandle` | `TimerHandle` | Handle for this timer (can be used to cancel) |
+
+#### Timer handle management
+
+`createTimerWith` returns a `TimerHandle`. Store it in `$State` to cancel later with `$base.cancelTimer(handle)`. If the timer does not need to be cancelled, discard: `any _ := $base.createTimerWith(tp);`
+
+#### Template
+
+```epl
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.L10N;
+
+event <BlockName>_$Parameters {
+	/**
+	 * Period (secs)
+	 *
+	 * The interval in seconds at which the timer fires.
+	 */
+	float period;
+
+	action $validate() {
+		if (not period.isFinite() or period <= 0.0) {
+			throw L10N.getLocalizedException("fwk_param_finite_positive_value",
+				[BlockBase.getL10N_param("period", self), period]);
+		}
+	}
+}
+
+event <BlockName>_$State {
+	optional<TimerHandle> timerHandle;
+	// Add additional state fields as needed
+}
+
+/**
+ * <BlockDisplayName>
+ *
+ * <Description of what this block does with timers.>
+ *
+ * @$blockCategory Utilities
+ * @$derivedName <BlockDisplayName> $period
+ */
+event <BlockName> {
+
+	BlockBase $base;
+	<BlockName>_$Parameters $parameters;
+
+	/**
+	 * @param $activation The current activation.
+	 * @param $input_value The input value.
+	 * @param $blockState The persisted state of the block.
+	 *
+	 * @$inputName value Value
+	 */
+	action $process(Activation $activation, float $input_value, <BlockName>_$State $blockState) {
+		ifpresent $blockState.timerHandle {
+			// Timer already running — update state only
+		} else {
+			// First input: create a recurring timer
+			TimerParams tp := TimerParams.recurring($parameters.period);
+			TimerHandle handle := $base.createTimerWith(tp);
+			$blockState.timerHandle := handle;
+		}
+	}
+
+	/**
+	 * Called when the timer fires.
+	 */
+	action $timerTriggered(Activation $activation, <BlockName>_$State $blockState) {
+		// Produce output on timer tick
+		// $setOutput_output($activation, value);
+	}
+
+	/**
+	 * Timer output.
+	 */
+	action<Activation,float> $setOutput_output;
+}
+```
+
+#### Key patterns for timer blocks
+
+- **Create timer on first input**: Check if `timerHandle` is present in state. If absent, create the timer and store the handle.
+- **Create timer in `$init()`**: Use when the timer should start immediately at model start (e.g. periodic tick generators), without waiting for input.
+- **One-shot delay**: Use `TimerParams.relative(delay)` with `.withPayload(value)` to delay a value and retrieve it in `$timerTriggered`.
+- **Recurring with state**: Use `TimerParams.recurring(interval)` and track period state (current value, flags) to decide what to output on each tick.
+- **Cancel and recreate**: Store `TimerHandle` in state, call `$base.cancelTimer(handle)` to stop, then create a new timer if needed.
 
 ---
 
