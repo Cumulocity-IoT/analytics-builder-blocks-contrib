@@ -71,14 +71,8 @@ pysys run
 Note this to the user — it means the block has no automated test coverage. Proceed with the build but warn that the block is untested.
 
 ### If tests fail
+If tests fail, do not proceed with the build. Instead: stop building and inform the user. Look at the correlator log and correlator error log to identify the problem. Provide the user with the actual error message and the block that caused the failure. Then, provide the user with a clear step-by-step process to fix the problem. Also consider that the problem might be the test itself or missing configuration files. Do not modify the block files for the user, but guide them to do so.
 
-1. Read the failure output to identify the failing test and block.
-2. Fix the block `.mon` file.
-3. Re-run the affected test alone to confirm the fix.
-4. Re-run the associated tests in full before proceeding.
-5. **Do not build a block whose tests are failing.**
-
-> **Note — compilation errors surface at test time, not build time.** The `analytics_builder build extension` tool packages `.mon` files into a zip without compiling them. Any EPL syntax or type errors (e.g. wrong argument types for `L10N.getLocalizedException()`) will only produce a failure when the correlator loads the code during a PySys test run. This is why passing tests before building is mandatory.
 
 ---
 

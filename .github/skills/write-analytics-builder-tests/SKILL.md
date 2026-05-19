@@ -190,6 +190,16 @@ self.assertThat("expected == output",
 - To leave an input disconnected, pass `inputs={'inputName': None}` in `createTestModel`.
 - `self.modelId` is automatically assigned `model_0`, `model_1`, etc. if not specified.
 
+### If tests fail
+
+1. Read the failure output to identify the failing test and block.
+2. Fix the block `.mon` file.
+3. Re-run the affected test alone to confirm the fix.
+4. Re-run the associated tests in full before proceeding.
+5. **Do not build a block whose tests are failing.**
+
+> **Note — compilation errors surface at test time, not build time.** The `analytics_builder build extension` tool packages `.mon` files into a zip without compiling them. Any EPL syntax or type errors (e.g. wrong argument types for `L10N.getLocalizedException()`) will only produce a failure when the correlator loads the code during a PySys test run. This is why passing tests before building is mandatory.
+
 ---
 
 ## Testing Timer-Based Blocks
