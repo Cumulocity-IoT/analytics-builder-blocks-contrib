@@ -191,7 +191,10 @@ Only proceed to implementation once the user confirms the plan.
 
 ### File location and naming
 
-- Place the block in `blocks/<BlockName>.mon` (or the appropriate subdirectory for Cumulocity/simulation blocks).
+- If the block covers functionality specifically for the Cumulocity API put it into `cumulocity-blocks`
+- Blocks that generate a simulated value based on some function should go to `simulation-blocks`
+- Blocks that are written in python should go to `python-blocks`
+- Otherwise place the block in `blocks`
 - Package: `apamax.analyticsbuilder.custom` for generic blocks, or choose an existing package to match the subdirectory.
 - Block name: PascalCase. Parameters event: `<BlockName>_$Parameters`. State event: `<BlockName>_$State`.
 

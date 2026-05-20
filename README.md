@@ -41,7 +41,6 @@ analytics-builder-blocks-contrib/
 ├── simulation-blocks/         # Blocks for generating simulated data streams
 ├── service-request-blocks/    # Blocks for calling external services
 ├── python-blocks/             # Blocks that execute Python functions
-├── generated-blocks/          # Blocks generated or created via the Copilot agent skills
 ├── tests/                     # PySys test cases (one subdirectory per test)
 ├── utils/                     # Shared EPL utilities used by tests (e.g. mocks)
 ├── config/                    # Connectivity configuration files
@@ -56,7 +55,6 @@ analytics-builder-blocks-contrib/
 | `simulation-blocks/` | Blocks for producing synthetic data streams: waveform generators (`WaveFormGenerator`, `ApproximateWaveFormGenerator`), random signals (`Random`, `RandomWalk`, `RandomWalk2D`), a fixed-value `Constant`, an `IntervalPulseGenerator`, and a `ProcessControl` block. Useful for model testing without live device data. |
 | `service-request-blocks/` | Blocks for making request to [Field Service Management (FSM) Integration](https://github.com/Cumulocity-IoT/cumulocity-microservice-service-request-mgmt). Currently contains `CreateServiceRequest`. |
 | `python-blocks/` | The `PythonFunction` block, which allows an Analytics Builder model to execute arbitrary Python code. |
-| `generated-blocks/` | Blocks created during development using the Copilot agent skills (e.g. `CountBy`, `Limit`, `DistanceTravelled`). New agent-generated blocks are placed here by convention unless a more specific folder applies. |
 
 ### Other top-level folders
 
