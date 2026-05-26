@@ -1,43 +1,71 @@
-/*
- * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
- * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
- */
-
- /*********
- * Note: this block is now available in 10.9.0.x or later of Analytics Builder as
- * part of the product.  The below is for reference use only, we recommend using
- * the product block where applicable.
- ********/
-
 package apamax.analyticsbuilder.blocks;
 
 using apama.analyticsbuilder.BlockBase;
 using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.L10N;
 
+/**
+ * Parameters for the Limit block.
+ */
 event Limit_$Parameters {
-	
+
 	/**
 	 * Upper Limit.
-	 * 
-	 * The upper limit for inputs. Any input above this value will be reduced to the upper limit.
-	 **/
+	 *
+	 * The maximum value the output can take. If not specified, only the lower limit applies.
+	 * If both limits are specified, this value must be greater than or equal to the lower limit.
+	 */
 	optional<float> upper;
-	
+
 	/**
 	 * Lower Limit.
-	 * 
-	 * The lower limit for inputs. Any input below this value will be reduced to the lower limit.
-	 **/
+	 *
+	 * The minimum value the output can take. If not specified, only the upper limit applies.
+	 * If both limits are specified, this value must be less than or equal to the upper limit.
+	 */
 	optional<float> lower;
 
+	action $validate() {
+		boolean hasLower := false;
+		boolean hasUpper := false;
+		float lowerLimit := 0.0;
+		float upperLimit := 0.0;
+
+		ifpresent lower as l {
+			hasLower := true;
+			lowerLimit := l;
+		}
+
+		ifpresent upper as u {
+			hasUpper := true;
+			upperLimit := u;
+		}
+
+		// At least one limit must be provided
+		if (not hasLower and not hasUpper) {
+			throw L10N.getLocalizedException("fwk_param_missing_required_value",
+				[BlockBase.getL10N_param("Limit", self)]);
+		}
+
+		// If both limits are provided, lower must be <= upper
+		if (hasLower and hasUpper and lower > upper) {
+			throw L10N.getLocalizedException("fwk_param_invalid_value",
+				[BlockBase.getL10N_param("lowerLimit", self), BlockBase.getL10N_param("upperLimit", self)]);
+		}
+	}
 }
 
 /**
- * Limit.
+ * Limit
  *
- * Limit inputs to optional lower and upper limits. If neither is provided, no limiting takes place.
+ * Constrains an input value to stay within specified upper and lower limits.
+ *
+ * The block outputs the input value if it falls within the configured limits. If the value exceeds either limit,
+ * the output is clamped to that limit. At least one limit (lower or upper) must be specified; if only one is provided,
+ * the input is limited in only that direction.
  *
  * @$blockCategory Calculations
+ * @$derivedName Limit $lower $upper
  */
 event Limit {
 
@@ -45,31 +73,34 @@ event Limit {
 	Limit_$Parameters $parameters;
 
 	/**
-	 * @param $input_value The input value.
+	 * @param $activation The current activation.
+	 * @param $input_value The input value to be limited.
 	 *
-	 * @$inputName value Value
+	 * @$inputName value Input Value
 	 */
-	 action $process(Activation $activation, float $input_value) {
-		 float o := $input_value;
-		 ifpresent $parameters.lower as l {
-			if($input_value < l) {
-				o := l;
+	action $process(Activation $activation, float $input_value) {
+		float output := $input_value;
+
+		ifpresent $parameters.lower as lower {
+			if (output < lower) {
+				output := lower;
 			}
-		 }
-		 ifpresent $parameters.upper as u {
-				if($input_value > u) {
-					o := u;
-				}
-			 }
-			 
-        $setOutput_output($activation, o);
-    }
+		}
 
-	 /**
-	 * Output.
+		ifpresent $parameters.upper as upper {
+			if (output > upper) {
+				output := upper;
+			}
+		}
+
+		$setOutput_output($activation, output);
+	}
+
+	/**
+	 * Output Value.
 	 *
-	 * The limited output value.
-	 */	 
-	action<Activation, float> $setOutput_output;
-
+	 * The input value clamped to the configured limits. If the input is within the limits, this equals the input.
+	 * Otherwise, the output is set to the limit that was violated.
+	 */
+	action<Activation,float> $setOutput_output;
 }
