@@ -1,0 +1,103 @@
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.Value;
+using com.apama.util.AnyExtractor;
+
+/**
+ * State of the Distance block — persisted across activations.
+ */
+event Distance_$State {
+	optional<float> previousLat;
+	optional<float> previousLng;
+}
+
+/**
+ * Distance
+ *
+ * Calculates the distance in meters between successive GPS positions using the Haversine formula.
+ *
+ * The block receives a stream of positions (as Value objects) and calculates the distance between the previous and current position.
+ * On the first position, no output is produced; subsequent positions
+ * trigger an output of the distance. If a position is missing latitude or longitude, no output is produced and the position is not stored as the
+ * previous position.
+ * 
+ * This block is intended with c8y_LocationUpdate Events or with Device ManagedObjects. In these cases the block input comes from an 
+ Extract Properties block with c8y_Position as path. Generally the properties on the Value expects a lat and a lng float value.
+ *
+ * @$blockCategory Calculations
+ */
+event Distance {
+	// Earth's radius in meters
+	constant float R := 6371000.0;
+
+	BlockBase $base;
+
+	/**
+	 * @param $activation The current activation.
+	 * @param $input_position Input position as a Value containing lat/lng in properties.
+	 * @param $blockState The current persisted state of the block.
+	 *
+	 * @$inputName position Position
+	 */
+	action $process(Activation $activation, Value $input_position, Distance_$State $blockState) {
+		// If either lat or lng is not present (would be 0.0), skip
+		if not $input_position.properties.hasKey("lat") or 
+		   not $input_position.properties.hasKey("lng") {
+			return;
+		}
+
+		// Extract lat and lng from the Value's properties dictionary
+		// AnyExtractor.getFloatOr handles int-to-float conversion and missing keys
+		float currentLat := AnyExtractor($input_position.properties).getFloatOr("lat", 0.0);
+		float currentLng := AnyExtractor($input_position.properties).getFloatOr("lng", 0.0);
+				
+		// If this is the first position, just store it and produce no output
+		ifpresent $blockState.previousLat as prevLat {
+			ifpresent $blockState.previousLng as prevLng {
+				// Calculate haversine distance
+				float distance := calculateHaversine(prevLat, prevLng, currentLat, currentLng);
+				$setOutput_distance($activation, distance);
+			}
+		}
+		
+		// Store current position for next activation
+		$blockState.previousLat := currentLat;
+		$blockState.previousLng := currentLng;
+	}
+
+	/**
+	 * Calculate great circle distance using haversine formula.
+	 * 
+	 * @param lat1 Latitude of first point in degrees
+	 * @param lng1 Longitude of first point in degrees
+	 * @param lat2 Latitude of second point in degrees
+	 * @param lng2 Longitude of second point in degrees
+	 * @return Distance in meters
+	 */
+	action calculateHaversine(float lat1, float lng1, float lat2, float lng2) returns float {
+		
+		float toRad := float.PI / 180.0;
+		float lat1Rad := lat1 * toRad;
+		float lat2Rad := lat2 * toRad;
+		float deltaLatRad := (lat2-lat1) * toRad;
+		float deltaLonRad := (lng2-lng1) * toRad;
+		float a := (deltaLatRad/2.0).sin().pow(2.0)
+		 + lat1Rad.cos() * lat2Rad.cos() 
+		 * (deltaLonRad/2.0).sin().pow(2.0);
+		float c := 2.0 * a.sqrt().atan2((1.0-a).sqrt());
+		float distance := ((R * c) * 100.0).round().toFloat() / 100.0; // Round to 2 decimal places
+		
+		return distance;
+	}
+
+	/**
+	 * Distance in meters.
+	 *
+	 * The distance between the previous and current position.
+	 * Altitude is ignored; only latitude and longitude are used.
+	 */
+	action<Activation,float> $setOutput_distance;
+}
