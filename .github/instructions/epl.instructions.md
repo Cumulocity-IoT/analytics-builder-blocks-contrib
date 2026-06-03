@@ -18,6 +18,8 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 
 ## Common EPL Types
 
+- **`float`** - 64-bit floating point number. Operations: arithmetic (`+`, `-`, `*`, `/`), `.abs()`, `.sin()`, `.cos()`, `.tan()`, `.asin()`, `.acos()`, `.atan()`, `.atan2(y)`, `.sqrt()`, `.pow(exp)`, `.log()`, `.ceil()`, `.floor()`, `.round()`, `.toInteger()`, `.toString()`, `.isFinite()`, `.isNaN()`. Built-in constants: `float.PI` (π ≈ 3.14159…), `float.INFINITY`, `float.NAN`, `float.MAX`, `float.MIN`. Always use `float.PI` rather than hardcoding the numeric value.
+
 - **`string`** - Immutable text string. Operations: `length()`, `contains()`, `find()`, `substring()`, `split(delimiter)`, `replace(regex, replacement)`, `matches(regex)`, `toLower()`, `toUpper()`, `ltrim()`, `rtrim()`. Supports `+` concatenation and comparisons. String methods like `find()` return -1 if not found. Use `groupSearch(regex)` for regex extraction groups.
 
 - **`sequence<TYPE>`** - Ordered list with dynamic size. Operations: `append(item)`, `insert(item, index)`, `remove(index)`, `size()`, `isEmpty()`, `contains(item)`, `indexOf(item)`, `sort()`, `reverse()`. Access elements with `[index]` (0-based, negative indexes from end), or iterate with `for item in sequence`. Use `getOr(index, default)` for safe access without exceptions.
@@ -36,6 +38,12 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 
 - **`com.apama.util.AnyExtractor`** - Type-safe way to extract nested values from `any` data (JSON, events, dictionaries). Supports path notation like `"field"`, `"field.nested"`, `"array[0].item"` with both `.` and `[]` operators. Methods: `getString(path)`, `getInteger(path)`, `getFloat(path)`, `getBoolean(path)`, or `getAny(path)` for any type. Use `*Or()` variants for safe extraction with defaults: `getStringOr(path, default)`.
 
+  `AnyExtractor` can also wrap a `dictionary<string,any>` directly — useful for extracting fields from a `Value`'s properties dictionary without first casting to `any`:
+  ```epl
+  float lat := AnyExtractor($input_position.properties).getFloatOr("lat", 0.0);
+  ```
+  The `getFloatOr()` method automatically converts integer values to float, so it handles both `float` and `integer` entries in the dictionary without manual casting.
+
 - **`com.apama.correlator.timeformat.TimeFormat`** - Date/time formatting and parsing utility. Works with float timestamps (seconds since UNIX epoch). Key methods: `format(timestamp, pattern)` (format time), `parseTime(pattern, dateString)` (parse to timestamp), `formatUTC()`, `parseTimeUTC()` for UTC, or `*WithTimeZone()` variants for specific timezones. Also provides `getSystemTime()` to get current time and component extraction (dateComponent, timeComponent). Supports patterns like `"yyyy.MM.dd HH:mm:ss"`.
 
 ## Coding Standards
@@ -46,6 +54,32 @@ EPL is Apama's proprietary event processing language used for writing Analytics 
 - Use constants for configuration values, magic numbers, and strings (see examples below)
 - Organize code logically: parameters/events first, then monitor/action definitions, then implementation
 - Prefer tabs over spaces for indentation
+
+## Common EPL Pitfalls
+
+These are confirmed sources of runtime, compilation, or framework errors:
+
+| Pitfall | Wrong | Correct |
+|---------|-------|---------|
+| Type casting | `myInt as float` | `myInt.toFloat()` |
+| Type casting | `myFloat as integer` | `myFloat.toInteger()` |
+| Event field initialization | `integer counter := 0;` | `integer counter;` (EPL does not support field initializers in event declarations) |
+| `L10N.getLocalizedException()` second argument: must be `sequence<any>`, not `sequence<string>`. Passing raw string literals creates a `sequence<string>` which is a compile error. | `throw L10N.getLocalizedException("key", ["param1"]);` | `throw L10N.getLocalizedException("key", [BlockBase.getL10N_param("field", self), value]);` |
+| `optional` does not have `hasValue()`. Use `isEmpty()` and negate it to check if a value is present. | `if (myOpt.hasValue()) { ... }` | `if (not myOpt.isEmpty()) { ... }` or use `ifpresent myOpt as val { ... }` |
+
+Style recommendations used in this repository:
+
+| Recommendation | Less preferred | Preferred |
+|----------------|----------------|-----------|
+| Action type parameters | `action<Activation, float> $setOutput_x;` | `action<Activation,float> $setOutput_x;` (matches framework SDK convention) |
+| `if` conditions | `if myBool and otherVal { }` | `if (myBool and otherVal) { }` (clearer and recommended for consistency) |
+
+### Analytics Builder block-specific pitfalls
+
+- **Duplicate input/output name**: Input names and output names share a single namespace within a block. A field named `count` as both `$input_count` and `$setOutput_count` is a framework error (`Duplicate name used as input and output`). Use distinct names.
+- **`optional<boolean>` for required inputs**: Use `optional<boolean>` ONLY for inputs that are genuinely optional (i.e. the block works when the wire is not connected). For required pulse inputs, use plain `boolean`. Using `optional` for a required input prevents the block from operating correctly.
+- **State parameter position**: In `$process()`, put input parameters (`$input_*`) before the `_$State` parameter. Example: `action $process(Activation $activation, boolean $input_trigger, MyBlock_$State $blockState)`.
+- **No space in `action<...>` declarations**: Use `action<Activation,float>` not `action<Activation, float>` — the space form may be accepted but is inconsistent with the framework SDK convention; the no-space form is used by all built-in blocks.
 
 ## Documentation Comments (ApamaDoc)
 - Use `/** ... */` for all public events, monitors, and non-obvious actions
@@ -144,7 +178,7 @@ event MyBlock_$State { boolean prevState; }
 event MyBlock {
 	MyBlock_$Parameters $parameters;
 	BlockBase $base;
-	action $process(Activation $activation, MyBlock_$State $state, float $input_value) {
+	action $process(Activation $activation, float $input_value, MyBlock_$State $blockState) {
 		$setOutput_result($activation, $input_value > $parameters.threshold);
 	}
 }
