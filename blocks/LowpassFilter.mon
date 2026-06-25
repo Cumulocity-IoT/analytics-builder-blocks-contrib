@@ -1,0 +1,155 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.L10N;
+using apamax.analyticsbuilder.samples.WindowContents;
+using com.industry.analytics.FFT;
+using com.industry.analytics.ComplexType;
+using apama.analyticsbuilder.Value;
+
+/** The parameters for the LowpassFilter block. */
+event LowpassFilter_$Parameters{
+
+	/**
+	** Cut-off Frequency
+	*
+	* Only frequencies below this cut-off will be in the output.
+	* This is a float, must be a finite value.
+	*/
+	float cutoff;
+
+	/**
+	* Window Duration (secs) 
+	*
+	* The amount of time in seconds for which signal values are to be kept in the window. 
+	* This must be a finite and positive value.
+	*/
+	float windowDurationSec;
+
+	action $validate() {
+		if  (not cutoff.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_cutoff_value", [BlockBase.getL10N_param("cutoff",self),cutoff]);
+		}
+		if  (not windowDurationSec.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_windowDurationSec_value", [BlockBase.getL10N_param("windowDurationSec",self),windowDurationSec]);
+		}
+		if windowDurationSec < 0.0 {
+			throw L10N.getLocalizedException("fwk_param_positive_windowDurationSec_value", [BlockBase.getL10N_param("windowDurationSec",self),windowDurationSec]);
+		}
+	}
+}
+
+/** State of the block.*/
+event LowpassFilter_$State{
+	sequence<WindowContents> contents; //we keep in memory the time-series values received as input. We need to associate the time to each value to work with the rolling window
+	float startTime;
+}
+
+
+/**
+* Lowpass Filter
+*
+* Passes signals with a frequency lower than a selected cutoff frequency and excludes signals with frequencies higher than the cutoff frequency
+* It takes a signal (time-series of float value) as an input, buffer it until it reaches the window duration and then analyze the frequency of that signal.
+*
+* @$blockCategory Flow Manipulations
+*/
+event LowpassFilter {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	LowpassFilter_$Parameters $parameters;
+	constant string WINDOW_PROPERTY_NAME := "lowpassFilter";
+	
+	float cutOffLimit;
+	float periodSecs;
+
+	/** Called once at block start up. */
+	action $init() {
+		cutOffLimit := $parameters.cutoff;
+		periodSecs := $parameters.windowDurationSec;
+	}
+
+
+	/**
+	*
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	*
+	* @param $input_value float value to add to the time series.
+	*
+	* @$inputName value Value
+	*/
+	action $process(Activation $activation, float $input_value, LowpassFilter_$State $blockState) {
+		$base.createTimer(periodSecs, 0.0);
+		$blockState.contents.append(WindowContents($input_value, $activation.timestamp));
+	}
+
+	/**
+	* Called by the framework. Provide the blockstate specific to that partitio,
+	*
+	* This block takes in time series values from which frequencies are then calculated via FFT algo and it filter all frequencies above a specific threshold (cutoff) 
+	*
+	*/
+	action $timerTriggered(Activation $activation, LowpassFilter_$State $blockState) {
+		//if not input then no output
+		if $blockState.contents.size() = 0 {return;}
+
+		sequence<WindowContents> timeSeries := $blockState.contents;
+
+		//calculate the start time of the window 
+		$blockState.startTime := $activation.timestamp - periodSecs;
+
+		//expire old entries (index 0) that are older than the start of the window.
+		while (timeSeries.size() > 0 and timeSeries[0].timestamp < $blockState.startTime) {
+			timeSeries.remove(0);
+		}
+
+		sequence<decimal> timeSeriesValue := new sequence<decimal>;
+		WindowContents wc;
+		for wc in timeSeries {
+			timeSeriesValue.append((<float> wc.value).toDecimal());
+		}
+		integer timeRange := (timeSeries[timeSeries.size()-1].timestamp - timeSeries[0].timestamp).floor();
+		if timeRange > 0 {
+			//The sample size is the number of samples per-second that is used in the FFT calculation. 
+			integer sampleSize := timeSeries.size() / timeRange;
+			sequence<ComplexType> transformFF := FFT.fft(timeSeriesValue);
+			sequence<integer> frequencies := FFT.getFrequencies(sampleSize, transformFF);
+			sequence<float> lowPass := new sequence<float>;
+			integer f;
+
+			for f in frequencies {
+				if f.toFloat() <= cutOffLimit {
+					lowPass.append(f.toFloat());
+				}
+			}
+			Value v := new Value;
+			v.properties[LowpassFilter.WINDOW_PROPERTY_NAME] := lowPass;
+			v.value := true; //has to be set
+			$setOutput_filtered($activation, v);
+		}
+	}
+
+
+	/**
+	* Filtered
+	*
+	* Populated with frequencies lower than the cut-off.
+	*/
+	action<Activation,Value> $setOutput_filtered;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+}
