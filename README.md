@@ -27,7 +27,6 @@ git clone https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib.git
 The repository contains a Development Container setup that starts a container with all dependencies and tools already installed. If you use Visual Studio Code, it will detect the presence of the Development Container setup and ask if it should restart in a container.
 
 * When using the default Dockerfile, the latest versions of Apama, the Block SDK and the EPL Apps Tools will be installed by default. This is the recommended setup but if you require a specific version of each, you can overwrite the APAMA_VERSION, APAMA_ANALYTICS_BUILDER_SDK_BRANCH, and APAMA_EPLAPPS_TOOLS_BRANCH variables in devcontainer.json.
-* If you are using a computer running macOS on Apple silicon, it is recommended to replace the Dockerfile in devcontainer.json with Dockerfile.apple which uses an ARM64 base image yielding significantly better performance. This Dockerfile will currently always use Apama 27.
 
 
 ## Repository Structure
