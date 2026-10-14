@@ -1,0 +1,6 @@
+# Extra files to include in a block's individual release zip.
+#
+# Format: <block file>: <dependency file> [<dependency file>...]
+# Paths are relative to the repository root.
+
+blocks/CSVWriter.mon: blocks/CSVJSONUtils.mon

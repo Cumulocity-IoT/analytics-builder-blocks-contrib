@@ -95,22 +95,17 @@ The SDK picks up all `.mon`, `.yaml`, and `.properties` files found directly in 
 
 ### Building a single block in isolation
 
-If you need to package just one `.mon` file:
+If you need to package just one block, the block's `.mon` file alone is not always enough: some blocks need other files (e.g. `CSVWriter.mon` needs the helper `CSVJSONUtils.mon`). These are listed in `.github/block-dependencies.txt` (`<block file>: <dependency file>...`). When adding a block that needs another file, add an entry there.
+
+To build one zip per block (as the release workflow does), use the script, which includes the listed dependencies and skips helper files that are not blocks (no `$blockCategory` annotation):
 
 ```bash
-BLOCK_NAME=<BlockName>
-mkdir -p temp-${BLOCK_NAME}
-cp <block-dir>/${BLOCK_NAME}.mon temp-${BLOCK_NAME}/
-# Copy companion files if present
-for ext in yaml properties; do
-  [ -f "<block-dir>/${BLOCK_NAME}.${ext}" ] && cp "<block-dir>/${BLOCK_NAME}.${ext}" temp-${BLOCK_NAME}/
-done
-
-$ANALYTICS_BUILDER_SDK/analytics_builder build extension \
-  --input temp-${BLOCK_NAME}/ \
-  --output release-artifacts/${BLOCK_NAME}-<VERSION>.zip
-
-rm -rf temp-${BLOCK_NAME}
+bash .github/scripts/build-individual-blocks.sh \
+  $ANALYTICS_BUILDER_SDK/analytics_builder \
+  release-artifacts \
+  <VERSION> \
+  .github/block-dependencies.txt \
+  <block-dir>...
 ```
 
 ---
@@ -123,11 +118,11 @@ ls -lh release-artifacts/
 
 Check:
 - Every expected bundle zip exists and is non-zero in size.
-- If building individual block zips, the count matches the number of `.mon` files found in Step 1 plus the number of bundles.
+- If building individual block zips, the count matches the number of block `.mon` files (those containing `$blockCategory`) found in Step 1 plus the number of bundles.
 
 ```bash
-# Count .mon files
-find <block-dirs...> -maxdepth 1 -name "*.mon" | wc -l
+# Count block .mon files
+find <block-dirs...> -maxdepth 1 -name "*.mon" -exec grep -l '\$blockCategory' {} + | wc -l
 
 # Count produced zips
 ls release-artifacts/*.zip | wc -l
