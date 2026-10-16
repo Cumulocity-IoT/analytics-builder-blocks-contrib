@@ -90,37 +90,12 @@ jobs:
       - name: Build individual blocks
         run: |
           echo "Building individual blocks..."
-          BLOCK_COUNT=0
-
-          # Build individual blocks from each directory
-          for dir in blocks cumulocity-blocks service-request-blocks simulation-blocks; do
-            if [ -d "$dir" ]; then
-              for block_file in "$dir"/*.mon; do
-                if [ -f "$block_file" ]; then
-                  block_name=$(basename "$block_file" .mon)
-
-                  # Create temp directory for single block
-                  temp_dir="temp-${block_name}"
-                  mkdir -p "$temp_dir"
-                  cp "$block_file" "$temp_dir/"
-
-                  # Build individual block zip
-                  ./analytics-builder-block-sdk/analytics_builder build extension \
-                    --input "$temp_dir/" \
-                    --output "release-artifacts/${block_name}-${{ steps.version.outputs.normalized }}.zip"
-
-                  # Clean up temp directory
-                  rm -rf "$temp_dir"
-
-                  BLOCK_COUNT=$((BLOCK_COUNT + 1))
-                  echo "  Built: ${block_name}"
-                fi
-              done
-            fi
-          done
-
-          echo ""
-          echo "Built $BLOCK_COUNT individual blocks"
+          bash .github/scripts/build-individual-blocks.sh \
+            ./analytics-builder-block-sdk/analytics_builder \
+            release-artifacts \
+            ${{ steps.version.outputs.normalized }} \
+            .github/block-dependencies.txt \
+            blocks cumulocity-blocks service-request-blocks simulation-blocks
       
       # Step 7: Validate Build
       - name: Verify build artifacts
@@ -142,7 +117,8 @@ jobs:
           for dir in blocks cumulocity-blocks service-request-blocks simulation-blocks; do
             if [ -d "$dir" ]; then
               for block_file in "$dir"/*.mon; do
-                if [ -f "$block_file" ]; then
+                # Helper files without a block definition are not built individually
+                if [ -f "$block_file" ] && grep -q '\$blockCategory' "$block_file"; then
                   BLOCK_COUNT=$((BLOCK_COUNT + 1))
                 fi
               done
